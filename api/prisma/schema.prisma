@@ -8,3 +8,12 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// Tabla de usuarios
+model WLB_USUARIO {
+  USUId        Int      @id @default(autoincrement())
+  USUNombre    String
+  USUCorreo    String   @unique
+  USUPassword  String
+  USUCreadoEn  DateTime @default(now())
+}
