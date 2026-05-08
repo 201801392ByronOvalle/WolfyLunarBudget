@@ -1,41 +1,28 @@
 // app/page.tsx
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import SummaryCard from "@/components/dashboard/SummaryCard";
+import { getUsuarios } from "@/services/usuarios.services";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const usuariosResponse = await getUsuarios();
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
         <DashboardHeader />
 
+        <p className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-300">
+          Usuario conectado:{" "}
+          <span className="font-semibold text-violet-400">
+            {usuariosResponse.data[0]?.USUNombre ?? "Sin usuario"}
+          </span>
+        </p>
+
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard
-            title="Ingresos"
-            amount="Q0.00"
-            helper="Total recibido este mes"
-            tone="income"
-          />
-
-          <SummaryCard
-            title="Gastos"
-            amount="Q0.00"
-            helper="Total gastado este mes"
-            tone="expense"
-          />
-
-          <SummaryCard
-            title="Ahorro"
-            amount="Q0.00"
-            helper="Dinero enviado a metas"
-            tone="saving"
-          />
-
-          <SummaryCard
-            title="Disponible"
-            amount="Q0.00"
-            helper="Dinero libre estimado"
-            tone="available"
-          />
+          <SummaryCard title="Ingresos" amount="Q0.00" helper="Total recibido este mes" tone="income" />
+          <SummaryCard title="Gastos" amount="Q0.00" helper="Total gastado este mes" tone="expense" />
+          <SummaryCard title="Ahorro" amount="Q0.00" helper="Dinero enviado a metas" tone="saving" />
+          <SummaryCard title="Disponible" amount="Q0.00" helper="Dinero libre estimado" tone="available" />
         </section>
       </div>
     </main>
