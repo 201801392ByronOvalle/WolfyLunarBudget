@@ -1,0 +1,1 @@
+// components/movimientos/MovementsTable.tsx
