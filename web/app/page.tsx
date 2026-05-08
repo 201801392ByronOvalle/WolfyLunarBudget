@@ -1,21 +1,25 @@
-// app/page.tsx
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import SummaryCard from "@/components/dashboard/SummaryCard";
 import { getUsuarios } from "@/services/usuarios.services";
 
 export default async function HomePage() {
-  const usuariosResponse = await getUsuarios();
+  let usuarioNombre = "Modo local sin conexión";
+
+  try {
+    const usuariosResponse = await getUsuarios();
+    usuarioNombre = usuariosResponse.data[0]?.USUNombre ?? "Sin usuario";
+  } catch {
+    usuarioNombre = "Modo local sin conexión";
+  }
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
         <DashboardHeader />
 
-        <p className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-300">
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
           Usuario conectado:{" "}
-          <span className="font-semibold text-violet-400">
-            {usuariosResponse.data[0]?.USUNombre ?? "Sin usuario"}
-          </span>
+          <span className="font-semibold">{usuarioNombre}</span>
         </p>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
