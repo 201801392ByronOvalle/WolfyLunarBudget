@@ -10,10 +10,107 @@ datasource db {
 }
 
 // Tabla de usuarios
-model WLB_USUARIO {
+model Usuario {
   USUId        Int      @id @default(autoincrement())
   USUNombre    String
   USUCorreo    String   @unique
   USUPassword  String
   USUCreadoEn  DateTime @default(now())
+
+  cuentas      Cuenta[]
+  categorias   Categoria[]
+  movimientos  Movimiento[]
+  metas        Meta[]
+  presupuestos PresupuestoMensual[]
+
+  @@map("WLB_USUARIO")
+}
+
+// Cuentas: BI sueldo, BAC ahorro, efectivo, etc.
+model Cuenta {
+  CUEId          Int      @id @default(autoincrement())
+  CUENombre      String
+  CUETipo        String
+  CUESaldoInicial Decimal @default(0)
+  CUEActiva      Boolean  @default(true)
+  CUECreadoEn    DateTime @default(now())
+
+  USUId          Int
+  usuario        Usuario  @relation(fields: [USUId], references: [USUId])
+
+  movimientos    Movimiento[]
+
+  @@map("WLB_CUENTA")
+}
+
+// Categorías: comida, transporte, hobbies, libros, ahorro, etc.
+model Categoria {
+  CATId        Int      @id @default(autoincrement())
+  CATNombre    String
+  CATTipo      String
+  CATColor     String?
+  CATIcono     String?
+  CATActiva    Boolean  @default(true)
+  CATCreadoEn  DateTime @default(now())
+
+  USUId        Int
+  usuario      Usuario  @relation(fields: [USUId], references: [USUId])
+
+  movimientos  Movimiento[]
+
+  @@map("WLB_CATEGORIA")
+}
+
+// Movimientos: ingresos, gastos, ahorros o transferencias
+model Movimiento {
+  MOVId          Int      @id @default(autoincrement())
+  MOVTipo        String
+  MOVMonto       Decimal
+  MOVDescripcion String?
+  MOVFecha       DateTime
+  MOVCreadoEn    DateTime @default(now())
+
+  USUId          Int
+  CUEId          Int
+  CATId          Int?
+
+  usuario        Usuario    @relation(fields: [USUId], references: [USUId])
+  cuenta         Cuenta     @relation(fields: [CUEId], references: [CUEId])
+  categoria      Categoria? @relation(fields: [CATId], references: [CATId])
+
+  @@map("WLB_MOVIMIENTO")
+}
+
+// Metas: viaje, carro, inversión, fondo emergencia, etc.
+model Meta {
+  METId           Int      @id @default(autoincrement())
+  METNombre       String
+  METDescripcion  String?
+  METMontoObjetivo Decimal
+  METMontoActual   Decimal @default(0)
+  METFechaObjetivo DateTime?
+  METActiva        Boolean @default(true)
+  METCreadoEn      DateTime @default(now())
+
+  USUId            Int
+  usuario          Usuario @relation(fields: [USUId], references: [USUId])
+
+  @@map("WLB_META")
+}
+
+// Presupuesto mensual por categoría
+model PresupuestoMensual {
+  PREId       Int      @id @default(autoincrement())
+  PREAnio     Int
+  PREMes      Int
+  PREMonto    Decimal
+  PRECreadoEn DateTime @default(now())
+
+  USUId       Int
+  CATId       Int
+
+  usuario     Usuario   @relation(fields: [USUId], references: [USUId])
+  categoria   Categoria @relation(fields: [CATId], references: [CATId])
+
+  @@map("WLB_PRESUPUESTO_MENSUAL")
 }
