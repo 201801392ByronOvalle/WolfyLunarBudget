@@ -57,6 +57,7 @@ model Categoria {
   usuario      Usuario  @relation(fields: [USUId], references: [USUId])
 
   movimientos  Movimiento[]
+  presupuestos PresupuestoMensual[]
 
   @@map("WLB_CATEGORIA")
 }
@@ -68,6 +69,7 @@ model Movimiento {
   MOVMonto       Decimal
   MOVDescripcion String?
   MOVFecha       DateTime
+  MOVActiva      Boolean  @default(true)
   MOVCreadoEn    DateTime @default(now())
 
   USUId          Int

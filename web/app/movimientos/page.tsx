@@ -1,9 +1,19 @@
+"use client";
+
 // app/movimientos/page.tsx
+import { useState } from "react";
 import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import CreateMovementForm from "@/components/movimientos/CreateMovementForm";
+import MovementsTable from "@/components/movimientos/MovementsTable";
 
 export default function MovimientosPage() {
+    const [refreshSignal, setRefreshSignal] = useState(0);
+
+    function refrescarMovimientos() {
+        setRefreshSignal((valor) => valor + 1);
+    }
+
     return (
         <AppShell>
             <PageHeader
@@ -12,7 +22,9 @@ export default function MovimientosPage() {
                 description="Registra, consulta y administra ingresos, gastos y ahorros."
             />
 
-            <CreateMovementForm />
+            <CreateMovementForm onMovimientoCreado={refrescarMovimientos} />
+
+            <MovementsTable refreshSignal={refreshSignal} />
         </AppShell>
     );
 }
