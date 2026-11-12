@@ -33,8 +33,8 @@ export interface MovimientoResponse {
     data: Movimiento;
 }
 
+// El usuario lo determina el servidor (CURRENT_USER_ID); el cliente no envía USUId (FR-024).
 export interface CrearMovimientoPayload {
-    USUId: number;
     CUEId: number;
     CATId?: number | null;
     MOVTipo: TipoMovimiento;

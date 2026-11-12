@@ -3,7 +3,7 @@
 // components/movimientos/MovementsTable.tsx
 import { useEffect, useState } from "react";
 import { getCuentasActivas } from "@/services/cuentas.service";
-import { getCategoriasActivas } from "@/services/categorias.service";
+import { filtrarCategoriasParaMovimiento, getCategorias } from "@/services/categorias.service";
 import { desactivarMovimiento, editarMovimiento, getMovimientos } from "@/services/movimientos.service";
 import { Cuenta } from "@/types/cuenta";
 import { Categoria } from "@/types/categoria";
@@ -47,6 +47,7 @@ function colorTipo(tipo: TipoMovimiento): string {
 export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
     const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
     const [cuentas, setCuentas] = useState<Cuenta[]>([]);
+    // Todas las categorías del usuario (activas e inactivas) para poder mostrar la histórica en edición.
     const [categorias, setCategorias] = useState<Categoria[]>([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
     const [formularioEdicion, setFormularioEdicion] = useState<FormularioEdicion | null>(null);
     const [guardandoEdicion, setGuardandoEdicion] = useState(false);
     const [errorEdicion, setErrorEdicion] = useState<string | null>(null);
+    const [avisoEdicion, setAvisoEdicion] = useState<string | null>(null);
     const [desactivandoId, setDesactivandoId] = useState<number | null>(null);
 
     async function cargarDatos() {
@@ -62,15 +64,15 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
         setError(null);
 
         try {
-            const [movimientosResponse, cuentasActivas, categoriasActivas] = await Promise.all([
+            const [movimientosResponse, cuentasActivas, categoriasResponse] = await Promise.all([
                 getMovimientos(),
                 getCuentasActivas(),
-                getCategoriasActivas(),
+                getCategorias(),
             ]);
 
             setMovimientos(movimientosResponse.data);
             setCuentas(cuentasActivas);
-            setCategorias(categoriasActivas);
+            setCategorias(categoriasResponse.data);
         } catch (excepcion) {
             setError(excepcion instanceof Error ? excepcion.message : "Error al obtener movimientos.");
         } finally {
@@ -90,6 +92,7 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
     function iniciarEdicion(movimiento: Movimiento) {
         setEditandoId(movimiento.MOVId);
         setErrorEdicion(null);
+        setAvisoEdicion(null);
         setFormularioEdicion({
             tipo: movimiento.MOVTipo,
             monto: movimiento.MOVMonto,
@@ -104,6 +107,30 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
         setEditandoId(null);
         setFormularioEdicion(null);
         setErrorEdicion(null);
+        setAvisoEdicion(null);
+    }
+
+    // Al cambiar el tipo, si la categoría elegida deja de ofrecerse se limpia con aviso (FR-023).
+    function cambiarTipoEdicion(movimiento: Movimiento, tipo: TipoMovimiento) {
+        if (!formularioEdicion) return;
+        const seleccionId = Number(formularioEdicion.categoriaId);
+        const sigueDisponible =
+            !formularioEdicion.categoriaId ||
+            filtrarCategoriasParaMovimiento(categorias, tipo, movimiento.CATId, movimiento.MOVTipo).some(
+                (opcion) => opcion.categoria.CATId === seleccionId,
+            );
+
+        if (sigueDisponible) {
+            setAvisoEdicion(null);
+            setFormularioEdicion({ ...formularioEdicion, tipo });
+            return;
+        }
+
+        const nombre = categorias.find((c) => c.CATId === seleccionId)?.CATNombre.trim() ?? "seleccionada";
+        setAvisoEdicion(
+            `Se quitó la categoría “${nombre}” porque no puede usarse con ${etiquetaTipo(tipo).toLowerCase()}. Elige otra o deja “Sin categoría”.`,
+        );
+        setFormularioEdicion({ ...formularioEdicion, tipo, categoriaId: "" });
     }
 
     async function guardarEdicion(id: number) {
@@ -208,12 +235,10 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
                                     <div className="grid gap-3 md:grid-cols-2">
                                         <select
                                             className="rounded-xl border border-zinc-700 bg-zinc-900 p-2 text-sm outline-none focus:border-violet-500"
+                                            aria-label="Tipo del movimiento"
                                             value={formularioEdicion.tipo}
                                             onChange={(evento) =>
-                                                setFormularioEdicion({
-                                                    ...formularioEdicion,
-                                                    tipo: evento.target.value as TipoMovimiento,
-                                                })
+                                                cambiarTipoEdicion(movimiento, evento.target.value as TipoMovimiento)
                                             }
                                         >
                                             {TIPOS_MOVIMIENTO.map((tipo) => (
@@ -262,15 +287,23 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
 
                                         <select
                                             className="rounded-xl border border-zinc-700 bg-zinc-900 p-2 text-sm outline-none focus:border-violet-500"
+                                            aria-label="Categoría del movimiento"
                                             value={formularioEdicion.categoriaId}
-                                            onChange={(evento) =>
-                                                setFormularioEdicion({ ...formularioEdicion, categoriaId: evento.target.value })
-                                            }
+                                            onChange={(evento) => {
+                                                setAvisoEdicion(null);
+                                                setFormularioEdicion({ ...formularioEdicion, categoriaId: evento.target.value });
+                                            }}
                                         >
                                             <option value="">Sin categoría</option>
-                                            {categorias.map((categoria) => (
+                                            {/* Activas del tipo elegido y, si el tipo no cambió, la histórica marcada (FR-023). */}
+                                            {filtrarCategoriasParaMovimiento(
+                                                categorias,
+                                                formularioEdicion.tipo,
+                                                movimiento.CATId,
+                                                movimiento.MOVTipo,
+                                            ).map(({ categoria, marca }) => (
                                                 <option key={categoria.CATId} value={categoria.CATId}>
-                                                    {categoria.CATNombre}
+                                                    {marca ? `${categoria.CATNombre} ${marca}` : categoria.CATNombre}
                                                 </option>
                                             ))}
                                         </select>
@@ -285,7 +318,15 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
                                         />
                                     </div>
 
-                                    {errorEdicion && <p className="text-sm text-red-300">{errorEdicion}</p>}
+                                    <div aria-live="polite">
+                                        {avisoEdicion ? <p className="text-sm text-amber-200">{avisoEdicion}</p> : null}
+                                    </div>
+
+                                    {errorEdicion && (
+                                        <p role="alert" className="text-sm text-red-300">
+                                            {errorEdicion}
+                                        </p>
+                                    )}
 
                                     <div className="flex gap-2">
                                         <button
@@ -313,13 +354,13 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
                         return (
                             <div
                                 key={movimiento.MOVId}
-                                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 p-4"
+                                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4"
                             >
-                                <div>
-                                    <p className="font-medium">
+                                <div className="min-w-0">
+                                    <p className="break-words font-medium">
                                         {movimiento.MOVDescripcion || etiquetaTipo(movimiento.MOVTipo)}
                                     </p>
-                                    <p className="text-sm text-zinc-500">
+                                    <p className="break-words text-sm text-zinc-400">
                                         {movimiento.categoria?.CATNombre ?? "Sin categoría"} · {movimiento.cuenta.CUENombre} ·{" "}
                                         {formatearFecha(movimiento.MOVFecha)}
                                     </p>
@@ -333,7 +374,7 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
                                     <div className="flex gap-2">
                                         <button
                                             type="button"
-                                            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium transition hover:bg-zinc-800"
+                                            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium transition hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
                                             onClick={() => iniciarEdicion(movimiento)}
                                         >
                                             Editar
@@ -341,7 +382,7 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
 
                                         <button
                                             type="button"
-                                            className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
                                             onClick={() => manejarDesactivar(movimiento)}
                                             disabled={desactivandoId === movimiento.MOVId}
                                         >

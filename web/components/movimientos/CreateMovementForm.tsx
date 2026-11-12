@@ -2,9 +2,8 @@
 
 // components/movimientos/CreateMovementForm.tsx
 import { FormEvent, useEffect, useState } from "react";
-import { getUsuarios } from "@/services/usuarios.service";
 import { getCuentasActivas } from "@/services/cuentas.service";
-import { getCategoriasActivas } from "@/services/categorias.service";
+import { filtrarCategoriasParaMovimiento, getCategorias } from "@/services/categorias.service";
 import { crearMovimiento } from "@/services/movimientos.service";
 import { Cuenta } from "@/types/cuenta";
 import { Categoria } from "@/types/categoria";
@@ -32,13 +31,16 @@ const ESTADO_INICIAL: EstadoFormulario = {
     fecha: "",
 };
 
+const CLASE_CAMPO =
+    "rounded-xl border border-zinc-700 bg-zinc-950 p-3 outline-none transition focus:border-violet-500 disabled:opacity-50";
+
 function etiquetaTipo(tipo: TipoMovimiento): string {
     return tipo === "INGRESO" ? "Ingreso" : tipo === "GASTO" ? "Gasto" : "Ahorro";
 }
 
 export default function CreateMovementForm({ onMovimientoCreado }: CreateMovementFormProps) {
-    const [usuarioId, setUsuarioId] = useState<number | null>(null);
     const [cuentas, setCuentas] = useState<Cuenta[]>([]);
+    // Todas las categorías del usuario actual; el selector muestra solo las que corresponden (FR-023).
     const [categorias, setCategorias] = useState<Categoria[]>([]);
     const [cargandoOpciones, setCargandoOpciones] = useState(true);
     const [errorOpciones, setErrorOpciones] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
     const [form, setForm] = useState<EstadoFormulario>(ESTADO_INICIAL);
     const [enviando, setEnviando] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [avisoCategoria, setAvisoCategoria] = useState<string | null>(null);
 
     useEffect(() => {
         async function cargarOpciones() {
@@ -53,15 +56,14 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
             setErrorOpciones(null);
 
             try {
-                const [usuariosResponse, cuentasActivas, categoriasActivas] = await Promise.all([
-                    getUsuarios(),
+                // El usuario lo determina el servidor: ya no se consulta la lista de usuarios.
+                const [cuentasActivas, categoriasResponse] = await Promise.all([
                     getCuentasActivas(),
-                    getCategoriasActivas(),
+                    getCategorias(),
                 ]);
 
-                setUsuarioId(usuariosResponse.data[0]?.USUId ?? null);
                 setCuentas(cuentasActivas);
-                setCategorias(categoriasActivas);
+                setCategorias(categoriasResponse.data);
             } catch {
                 setErrorOpciones("No se pudo cargar la información necesaria para registrar movimientos.");
             } finally {
@@ -72,14 +74,32 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
         cargarOpciones();
     }, []);
 
+    // Derivado en el render: solo categorías activas del tipo elegido (movimiento nuevo).
+    const opcionesCategoria = filtrarCategoriasParaMovimiento(categorias, form.tipo);
+
+    function cambiarTipo(tipo: TipoMovimiento) {
+        const seleccionId = Number(form.categoriaId);
+        const sigueDisponible =
+            !form.categoriaId ||
+            filtrarCategoriasParaMovimiento(categorias, tipo).some((o) => o.categoria.CATId === seleccionId);
+
+        if (sigueDisponible) {
+            setAvisoCategoria(null);
+            setForm((actual) => ({ ...actual, tipo }));
+            return;
+        }
+
+        // La categoría elegida deja de corresponder: se limpia con aviso (US5-2).
+        const nombre = categorias.find((c) => c.CATId === seleccionId)?.CATNombre.trim() ?? "seleccionada";
+        setAvisoCategoria(
+            `Se quitó la categoría “${nombre}” porque no corresponde a ${etiquetaTipo(tipo).toLowerCase()}. Elige otra o deja “Sin categoría”.`,
+        );
+        setForm((actual) => ({ ...actual, tipo, categoriaId: "" }));
+    }
+
     async function manejarEnvio(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
         setError(null);
-
-        if (!usuarioId) {
-            setError("No existe un usuario disponible para registrar el movimiento.");
-            return;
-        }
 
         const monto = Number(form.monto);
         if (!Number.isFinite(monto) || monto <= 0) {
@@ -101,7 +121,6 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
 
         try {
             await crearMovimiento({
-                USUId: usuarioId,
                 CUEId: Number(form.cuentaId),
                 CATId: form.categoriaId ? Number(form.categoriaId) : null,
                 MOVTipo: form.tipo,
@@ -114,6 +133,7 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
             });
 
             setForm(ESTADO_INICIAL);
+            setAvisoCategoria(null);
             onMovimientoCreado();
         } catch (excepcion) {
             setError(excepcion instanceof Error ? excepcion.message : "Error al registrar el movimiento.");
@@ -123,7 +143,8 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
     }
 
     const sinCuentasDisponibles = !cargandoOpciones && !errorOpciones && cuentas.length === 0;
-    const formularioBloqueado = cargandoOpciones || !!errorOpciones || !usuarioId || sinCuentasDisponibles;
+    const formularioBloqueado = cargandoOpciones || !!errorOpciones || sinCuentasDisponibles;
+    const sinCategoriasDelTipo = !cargandoOpciones && !errorOpciones && opcionesCategoria.length === 0;
 
     return (
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
@@ -143,12 +164,6 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
                 </p>
             )}
 
-            {!cargandoOpciones && !errorOpciones && !usuarioId && (
-                <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                    No existe ningún usuario registrado. No es posible crear movimientos.
-                </p>
-            )}
-
             {sinCuentasDisponibles && (
                 <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
                     No hay cuentas activas disponibles. No es posible crear movimientos.
@@ -159,14 +174,15 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
                 <div className="grid gap-4 md:grid-cols-2">
                     {/* Tipo */}
                     <div className="flex flex-col gap-2">
-                        <label className="text-sm text-zinc-400">
+                        <label htmlFor="movimiento-tipo" className="text-sm text-zinc-400">
                             Tipo
                         </label>
 
                         <select
-                            className="rounded-xl border border-zinc-700 bg-zinc-950 p-3 outline-none transition focus:border-violet-500 disabled:opacity-50"
+                            id="movimiento-tipo"
+                            className={CLASE_CAMPO}
                             value={form.tipo}
-                            onChange={(evento) => setForm({ ...form, tipo: evento.target.value as TipoMovimiento })}
+                            onChange={(evento) => cambiarTipo(evento.target.value as TipoMovimiento)}
                             disabled={formularioBloqueado || enviando}
                         >
                             {TIPOS_MOVIMIENTO.map((tipo) => (
@@ -179,16 +195,17 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
 
                     {/* Monto */}
                     <div className="flex flex-col gap-2">
-                        <label className="text-sm text-zinc-400">
+                        <label htmlFor="movimiento-monto" className="text-sm text-zinc-400">
                             Monto
                         </label>
 
                         <input
+                            id="movimiento-monto"
                             type="number"
                             step="0.01"
                             min="0"
                             placeholder="0.00"
-                            className="rounded-xl border border-zinc-700 bg-zinc-950 p-3 outline-none transition focus:border-violet-500 disabled:opacity-50"
+                            className={CLASE_CAMPO}
                             value={form.monto}
                             onChange={(evento) => setForm({ ...form, monto: evento.target.value })}
                             disabled={formularioBloqueado || enviando}
@@ -198,14 +215,15 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
 
                 {/* Descripción */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm text-zinc-400">
+                    <label htmlFor="movimiento-descripcion" className="text-sm text-zinc-400">
                         Descripción
                     </label>
 
                     <input
+                        id="movimiento-descripcion"
                         type="text"
                         placeholder="Ej: Compra de libro"
-                        className="rounded-xl border border-zinc-700 bg-zinc-950 p-3 outline-none transition focus:border-violet-500 disabled:opacity-50"
+                        className={CLASE_CAMPO}
                         value={form.descripcion}
                         onChange={(evento) => setForm({ ...form, descripcion: evento.target.value })}
                         disabled={formularioBloqueado || enviando}
@@ -215,18 +233,19 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
                 <div className="grid gap-4 md:grid-cols-2">
                     {/* Cuenta */}
                     <div className="flex flex-col gap-2">
-                        <label className="text-sm text-zinc-400">
+                        <label htmlFor="movimiento-cuenta" className="text-sm text-zinc-400">
                             Cuenta
                         </label>
 
                         <select
-                            className="rounded-xl border border-zinc-700 bg-zinc-950 p-3 outline-none transition focus:border-violet-500 disabled:opacity-50"
+                            id="movimiento-cuenta"
+                            className={CLASE_CAMPO}
                             value={form.cuentaId}
                             onChange={(evento) => setForm({ ...form, cuentaId: evento.target.value })}
                             disabled={formularioBloqueado || enviando}
                         >
                             <option value="">
-                                {cargandoOpciones ? "Cargando cuentas..." : "Selecciona una cuenta"}
+                                {cargandoOpciones ? "Cargando cuentas…" : "Selecciona una cuenta"}
                             </option>
                             {cuentas.map((cuenta) => (
                                 <option key={cuenta.CUEId} value={cuenta.CUEId}>
@@ -236,39 +255,59 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
                         </select>
                     </div>
 
-                    {/* Categoría */}
+                    {/* Categoría: solo activas del tipo elegido (FR-023) */}
                     <div className="flex flex-col gap-2">
-                        <label className="text-sm text-zinc-400">
+                        <label htmlFor="movimiento-categoria" className="text-sm text-zinc-400">
                             Categoría
                         </label>
 
                         <select
-                            className="rounded-xl border border-zinc-700 bg-zinc-950 p-3 outline-none transition focus:border-violet-500 disabled:opacity-50"
+                            id="movimiento-categoria"
+                            className={CLASE_CAMPO}
                             value={form.categoriaId}
-                            onChange={(evento) => setForm({ ...form, categoriaId: evento.target.value })}
+                            onChange={(evento) => {
+                                setAvisoCategoria(null);
+                                setForm({ ...form, categoriaId: evento.target.value });
+                            }}
                             disabled={formularioBloqueado || enviando}
+                            aria-describedby={sinCategoriasDelTipo ? "movimiento-categoria-ayuda" : undefined}
                         >
                             <option value="">
-                                {cargandoOpciones ? "Cargando categorías..." : "Sin categoría"}
+                                {cargandoOpciones ? "Cargando categorías…" : "Sin categoría"}
                             </option>
-                            {categorias.map((categoria) => (
+                            {opcionesCategoria.map(({ categoria }) => (
                                 <option key={categoria.CATId} value={categoria.CATId}>
                                     {categoria.CATNombre}
                                 </option>
                             ))}
                         </select>
+
+                        {sinCategoriasDelTipo ? (
+                            <p id="movimiento-categoria-ayuda" className="text-xs text-zinc-400">
+                                No tienes categorías activas de {etiquetaTipo(form.tipo).toLowerCase()}.
+                            </p>
+                        ) : null}
                     </div>
+                </div>
+
+                <div aria-live="polite">
+                    {avisoCategoria ? (
+                        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                            {avisoCategoria}
+                        </p>
+                    ) : null}
                 </div>
 
                 {/* Fecha */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm text-zinc-400">
+                    <label htmlFor="movimiento-fecha" className="text-sm text-zinc-400">
                         Fecha
                     </label>
 
                     <input
+                        id="movimiento-fecha"
                         type="date"
-                        className="rounded-xl border border-zinc-700 bg-zinc-950 p-3 outline-none transition focus:border-violet-500 disabled:opacity-50"
+                        className={CLASE_CAMPO}
                         value={form.fecha}
                         onChange={(evento) => setForm({ ...form, fecha: evento.target.value })}
                         disabled={formularioBloqueado || enviando}
@@ -276,17 +315,17 @@ export default function CreateMovementForm({ onMovimientoCreado }: CreateMovemen
                 </div>
 
                 {error && (
-                    <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                    <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
                         {error}
                     </p>
                 )}
 
                 <button
                     type="submit"
-                    className="mt-2 rounded-xl bg-violet-600 px-4 py-3 font-medium transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-2 rounded-xl bg-violet-600 px-4 py-3 font-medium transition hover:bg-violet-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={formularioBloqueado || enviando}
                 >
-                    {enviando ? "Registrando..." : "Registrar movimiento"}
+                    {enviando ? "Registrando…" : "Registrar movimiento"}
                 </button>
             </form>
         </section>
