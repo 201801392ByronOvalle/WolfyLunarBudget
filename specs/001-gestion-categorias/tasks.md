@@ -236,19 +236,19 @@ crear, editar y desactivar, y `USUId` según D2 (FR-021 a FR-024, FR-026, amplia
 
 **Purpose**: puertas de calidad, documentación (Constitución IX) y verificaciones manuales.
 
-- [ ] T063 [AUTO] Puertas de `api/`: `npm test`, `npm run typecheck`, `npx tsc --noEmit`, `npm run build`; después, `git status` para confirmar que los cambios de `api/dist/` no se agregan a ningún commit (DA-08)
-- [ ] T064 [AUTO] Puertas de `web/`: `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`
-- [ ] T065 [P] Actualizar README.md: clave `CURRENT_USER_ID` (solo el nombre), que no es autenticación, que la API no arranca si es inválida (códigos 78/69/1), y los scripts `test`/`typecheck`
-- [ ] T066 [P] Actualizar docs/02-arquitectura/backend.md: `app.ts`/`server.ts`, `lib/usuario-actual.ts`, `lib/prisma.ts` (`maxWait` 5000 / `timeout` 10000 y por qué), `categorias.rules.ts`, endpoints nuevos y orden de rutas, transacciones `Serializable` con reintentos y sus límites sin `UNIQUE`, y que `P2028` no se trata como `P2034`
-- [ ] T067 [P] Actualizar docs/02-arquitectura/frontend.md: `components/categorias/`, funciones nuevas de `categorias.service.ts`, filtro de categorías en Movimientos y advertencia general del cambio de tipo
-- [ ] T068 [P] Actualizar docs/CHANGELOG.md con los cambios de contrato de contracts/categorias.md y contracts/movimientos.md (incluidos arranque, desactivar movimiento y respuesta 500 ante `P2028`)
-- [ ] T069 [P] Actualizar docs/01-proyecto/roadmap.md: Categorías completada, ajustes de Movimientos; pendientes: excepción del Principio VII hasta resolver DA-06, casos manuales en base aislada si siguen sin ejecutarse y riesgos residuales aceptados R-4, R-6, R-7, R-8, R-9, R-10, R-12 y R-13 de plan.md
-- [ ] T070 [AUTO] Revisiones estáticas del diff, **después** de T065–T069: ningún `fetch(` fuera de `web/services/`; `apiGet` en web/services/api.ts conserva `cache: "no-store"` (FR-019); ninguna respuesta con `error` crudo en api/src/modules/categorias/ ni movimientos/; sin `$queryRaw`/`$executeRaw`; `git diff --stat api/prisma` vacío; sin patrones de credenciales (`postgresql://`, `password=`, tokens) ni valores de `CURRENT_USER_ID`; `.specify/feature.json` y `api/dist/` fuera de lo preparado para commit
+- [X] T063 [AUTO] Puertas de `api/`: `npm test`, `npm run typecheck`, `npx tsc --noEmit`, `npm run build`; después, `git status` para confirmar que los cambios de `api/dist/` no se agregan a ningún commit (DA-08)
+- [X] T064 [AUTO] Puertas de `web/`: `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`
+- [X] T065 [P] Actualizar README.md: clave `CURRENT_USER_ID` (solo el nombre), que no es autenticación, que la API no arranca si es inválida (códigos 78/69/1), y los scripts `test`/`typecheck`
+- [X] T066 [P] Actualizar docs/02-arquitectura/backend.md: `app.ts`/`server.ts`, `lib/usuario-actual.ts`, `lib/prisma.ts` (`maxWait` 5000 / `timeout` 10000 y por qué), `categorias.rules.ts`, endpoints nuevos y orden de rutas, transacciones `Serializable` con reintentos y sus límites sin `UNIQUE`, y que `P2028` no se trata como `P2034`
+- [X] T067 [P] Actualizar docs/02-arquitectura/frontend.md: `components/categorias/`, funciones nuevas de `categorias.service.ts`, filtro de categorías en Movimientos y advertencia general del cambio de tipo
+- [X] T068 [P] Actualizar docs/CHANGELOG.md con los cambios de contrato de contracts/categorias.md y contracts/movimientos.md (incluidos arranque, desactivar movimiento y respuesta 500 ante `P2028`)
+- [X] T069 [P] Actualizar docs/01-proyecto/roadmap.md: Categorías completada, ajustes de Movimientos; pendientes: excepción del Principio VII hasta resolver DA-06, casos manuales en base aislada si siguen sin ejecutarse y riesgos residuales aceptados R-4, R-6, R-7, R-8, R-9, R-10, R-12 y R-13 de plan.md
+- [X] T070 [AUTO] Revisiones estáticas del diff, **después** de T065–T069: ningún `fetch(` fuera de `web/services/`; `apiGet` en web/services/api.ts conserva `cache: "no-store"` (FR-019); ninguna respuesta con `error` crudo en api/src/modules/categorias/ ni movimientos/; sin `$queryRaw`/`$executeRaw`; `git diff --stat api/prisma` vacío; sin patrones de credenciales (`postgresql://`, `password=`, tokens) ni valores de `CURRENT_USER_ID`; `.specify/feature.json` y `api/dist/` fuera de lo preparado para commit
 - [ ] T071 [MANUAL-LECTURA] Arranque A1–A5 de quickstart.md §2, ejecutado por Andrés (A1 solo lee de Neon; A2–A5 con cambios temporales en la configuración local, restaurados al terminar); evidencia sin valores de configuración. Cubre el cableado de salida de `server.ts` (excepción VII)
 - [ ] T072 [MANUAL-AISLADA] Casos M1–M10 de quickstart.md §3 y regresión §4 (SC-006) **exclusivamente en una base aislada** preparada por Andrés (incluidos los duplicados históricos de M9); **nunca** sobre la base Neon actual. Registrar evidencia en el PR. En M7 anotar la forma del error observado (`P2034`, `40001` u otro) y, si no coincide con `esErrorDeSerializacion`, abrir una corrección; un `P2028` se registra aparte como tiempo agotado. Si no hay base aislada, la tarea queda **pendiente** y la excepción VII sigue abierta en el roadmap
 - [ ] T073 [MANUAL-AISLADA] Validación de usabilidad SC-001 (caso M11 de quickstart.md) en la base aislada: cronometrar desde abrir `/categorias` hasta ver la confirmación de una categoría válida creada y anotar dificultades; es una observación de usabilidad, no una garantía de rendimiento
-- [ ] T074 Revisar la matriz de trazabilidad de este archivo: cada criterio tiene una prueba en verde o evidencia manual (o figura como pendiente con motivo); marcar las tareas completadas
-- [ ] T075 Preparar el resumen de entrega (Constitución IX): funcionalidad, archivos creados y modificados, decisiones, riesgos residuales, validaciones automáticas ejecutadas y manuales pendientes, y la lista de commits locales creados con su hash corto (Constitución X, v1.3.0); sin push y sin incluir `.specify/feature.json` ni `api/dist/`
+- [X] T074 Revisar la matriz de trazabilidad de este archivo: cada criterio tiene una prueba en verde o evidencia manual (o figura como pendiente con motivo); marcar las tareas completadas
+- [X] T075 Preparar el resumen de entrega (Constitución IX): funcionalidad, archivos creados y modificados, decisiones, riesgos residuales, validaciones automáticas ejecutadas y manuales pendientes, y la lista de commits locales creados con su hash corto (Constitución X, v1.3.0); sin push y sin incluir `.specify/feature.json` ni `api/dist/`
 
 ---
 
@@ -375,6 +375,22 @@ antes de integrar.
 | SC-006 (regresión Movimientos) | T051 | T053–T055 | §4 (T072) |
 | SC-008 (movimientos nuevos con tipo correspondiente) | T051 | T053 | — |
 | Constitución VII / VIII / IX | T063, T064, T070 | — | T075 |
+
+### Estado de la verificación (T074, 2026-11-12)
+
+- **Columna "Pruebas automatizadas": en verde.** API: 235/235 pruebas en 9 archivos (T009–T011,
+  T019, T022, T030, T038, T045, T051); web: 7/7 (T052). `typecheck`, `tsc`, `lint` y `next build`
+  sin errores (T063, T064). Revisiones estáticas sin hallazgos (T070). Todas usan el doble de Prisma
+  con `DATABASE_URL` en un host `.invalid`: **no prueban PostgreSQL real**.
+- **Filas "— (UI)"** (US2-9, FR-017/SC-007, FR-002, SC-005): revisadas en el navegador durante
+  US1–US5 con respuestas de la API simuladas en la pestaña (estados, 360–375 px sin desplazamiento
+  horizontal, confirmaciones). No sustituyen a M8 con datos reales.
+- **Columna "Manual": pendiente.** No se ejecutaron T062, T071 (A1–A5), T072 (M1–M10 y §4) ni T073
+  (M11): esta computadora no tiene conexión con Neon y no existe todavía una base aislada (DA-06).
+  Hasta entonces quedan sin evidencia manual: concurrencia real (M7, forma de `P2034`/`40001`),
+  `P2028` real (M10), arranque A1–A5, desactivación con movimientos reales (M3), conservación de
+  categorías históricas con datos reales (M4, M5), duplicados históricos reales (M9), regresión §4 y
+  usabilidad SC-001. La excepción del Principio VII sigue abierta en el roadmap.
 
 ---
 
