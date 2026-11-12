@@ -1,6 +1,13 @@
 // api/src/modules/categorias/categorias.routes.ts
 import { Router } from "express";
-import { createCategoria, getCategorias, getDuplicadosCategorias, updateCategoria } from "./categorias.controller";
+import {
+    activarCategoria,
+    createCategoria,
+    desactivarCategoria,
+    getCategorias,
+    getDuplicadosCategorias,
+    updateCategoria,
+} from "./categorias.controller";
 
 const router = Router();
 
@@ -10,6 +17,8 @@ const router = Router();
 router.get("/", getCategorias);
 router.get("/duplicados", getDuplicadosCategorias);
 router.post("/", createCategoria);
+router.patch("/:id/desactivar", desactivarCategoria);
+router.patch("/:id/activar", activarCategoria);
 
 // /:id siempre al final (después de las rutas fijas).
 router.patch("/:id", updateCategoria);

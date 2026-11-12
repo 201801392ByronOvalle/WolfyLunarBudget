@@ -272,3 +272,53 @@ export const updateCategoria = async (req: Request, res: Response) => {
         responderErrorInesperado(res, error, "Error al actualizar la categoría");
     }
 };
+
+type ResultadoEstado = { estado: "no-encontrada" } | { estado: "sin-cambio" } | { estado: "cambiada"; categoria: unknown };
+
+// Activa o desactiva una categoría propia sin borrarla (FR-008 a FR-012). Solo escribe CATActiva:
+// los movimientos y presupuestos asociados no se tocan. Repetir el estado actual responde 409.
+function cambiarEstadoCategoria(activa: boolean) {
+    const verbo = activa ? "activar" : "desactivar";
+    return async (req: Request, res: Response) => {
+        try {
+            const id = parseIdCategoria(req.params.id);
+            if (!id) {
+                res.status(400).json({ success: false, message: "El id de la categoría es inválido", data: null });
+                return;
+            }
+            const USUId = obtenerUsuarioActualId();
+
+            // La lectura y la escritura van en la misma transacción (Constitución V).
+            const resultado = await prisma.$transaction(async (tx): Promise<ResultadoEstado> => {
+                const actual = await tx.categoria.findUnique({ where: { CATId: id } });
+                if (!actual || actual.USUId !== USUId) return { estado: "no-encontrada" };
+                if (actual.CATActiva === activa) return { estado: "sin-cambio" };
+                const categoria = await tx.categoria.update({ where: { CATId: id }, data: { CATActiva: activa } });
+                return { estado: "cambiada", categoria };
+            });
+
+            if (resultado.estado === "no-encontrada") {
+                res.status(404).json({ success: false, message: "La categoría indicada no existe", data: null });
+                return;
+            }
+            if (resultado.estado === "sin-cambio") {
+                res.status(409).json({
+                    success: false,
+                    message: activa ? "La categoría ya se encuentra activa" : "La categoría ya se encuentra inactiva",
+                    data: null,
+                });
+                return;
+            }
+            res.json({
+                success: true,
+                message: activa ? "Categoría activada correctamente" : "Categoría desactivada correctamente",
+                data: resultado.categoria,
+            });
+        } catch (error) {
+            responderErrorInesperado(res, error, `Error al ${verbo} la categoría`);
+        }
+    };
+}
+
+export const desactivarCategoria = cambiarEstadoCategoria(false);
+export const activarCategoria = cambiarEstadoCategoria(true);
