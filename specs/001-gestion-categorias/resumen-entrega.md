@@ -98,18 +98,21 @@ Lista de comprobación:
 - [x] **T062** (verificada el 2026-11-12 en PostgreSQL local; incidencia I-1 corregida en `1e7969d`, ver
       `verificacion-manual.md`): `/movimientos` con la API real, sin guardar: filtro por tipo, aviso al cambiar el
       tipo, categoría histórica marcada en edición y cancelar.
-- [ ] **M1–M3**: crear, rechazo de duplicado normalizado, desactivar sin que aparezca en movimientos
+T072 ejecutada el 2026-11-12 en PostgreSQL local (detalle en `verificacion-manual.md`):
+
+- [x] **M1–M3**: crear, rechazo de duplicado normalizado, desactivar sin que aparezca en movimientos
       nuevos.
-- [ ] **M4–M5**: conservar una categoría inactiva al editar; cambiar el tipo (409/400 si se fuerza por
+- [x] **M4–M5**: conservar una categoría inactiva al editar; cambiar el tipo (409/400 si se fuerza por
       API).
-- [ ] **M6**: rechazo del cambio de tipo con movimientos asociados.
-- [ ] **M7**: dos `POST` simultáneos; registrar la forma del error (`P2034`, `40001` u otro). Si no la
-      reconoce `esErrorDeSerializacion`, abrir una corrección. Un `P2028` se registra aparte.
-- [ ] **M8**: pantallas a 360 px con datos reales.
-- [ ] **M9**: diagnóstico de duplicados sin cambios en el recuento de filas.
-- [ ] **M10**: suspensión del compute y latencia observada; 500 genérico si se supera
-      `maxWait`/`timeout`.
-- [ ] **§4 regresión de Movimientos** (SC-006): registrar, editar y desactivar con y sin categoría.
+- [x] **M6**: rechazo del cambio de tipo con movimientos asociados. **Defecto abierto D-1**: reenviar
+      un nombre histórico con espacios alrededor, sin cambiarlo, responde 409.
+- [x] **M7**: dos `POST` simultáneos → 201 + 409; la forma observada es `P2034`, que reconoce
+      `esErrorDeSerializacion`.
+- [x] **M8**: pantallas a 360 px con datos reales.
+- [x] **M9**: diagnóstico de duplicados sin cambios en el recuento de filas.
+- [ ] **M10**: verificado el `timeout` (500 genérico + `P2028`, sin cambios); **pendientes** la
+      suspensión del compute y `maxWait`, no reproducibles en PostgreSQL local.
+- [x] **§4 regresión de Movimientos** (SC-006): registrar, editar y desactivar con y sin categoría.
 - [ ] **M11** (T073): cronometrar la creación de una categoría desde `/categorias`.
 
 Registrar la evidencia en el PR, sin valores de configuración.

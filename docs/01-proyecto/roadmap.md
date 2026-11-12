@@ -177,8 +177,10 @@ con verificaciones manuales que **todavía no se han ejecutado**:
 
 - [x] Arranque A1–A5 (`quickstart.md` §2), verificado el 2026-11-12 en PostgreSQL local (T071):
       A1 arranca; A2–A4 terminan con 78 y A5 con 69, sin valores sensibles en consola.
-- [ ] Casos M1–M10 y regresión de Movimientos §4, **solo en una base aislada**, nunca en la base Neon
-      actual. En M7 anotar la forma del error de serialización observado.
+- [x] Casos M1–M10 y regresión de Movimientos §4 (T072), ejecutados el 2026-11-12 en PostgreSQL
+      local. M7 observó `P2034`. Pendientes: la parte de M10 sobre suspensión del compute y
+      `maxWait`, y la corrección del defecto D-1 (reenviar un nombre histórico con espacios responde
+      409). Ver `specs/001-gestion-categorias/verificacion-manual.md`.
 - [ ] M11: observación de usabilidad SC-001 en la base aislada.
 - [x] Revisión de `/movimientos` con la API real, sin guardar datos (T062), el 2026-11-12 en una base
       PostgreSQL local aislada. Detectó la incidencia I-1 (desbordamiento a 360 px con montos

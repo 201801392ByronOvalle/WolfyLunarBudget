@@ -121,6 +121,74 @@ manual en `quickstart.md`; lo cubren las pruebas unitarias de `describirErrorArr
   instrucciones de la base local cargan siempre `api/.env.test.local` completo antes de arrancar.
   Comportamiento previo, sin cambios de código.
 
-## T072–T073
+## T072 — Casos M1–M10 y regresión §4 (2026-11-12)
 
-Pendientes.
+**Resultado: ejecutada y evaluada.** Todos los casos se ejecutaron. Queda un defecto abierto (D-1)
+y una parte de M10 que no se puede reproducir de forma segura en local.
+
+**Preparación y salvaguardas**
+
+- Destino comprobado por lectura antes de escribir: `lunarbudget_test` en `::1:5432`. La API
+  principal (puerto 4000) devolvía los mismos datos que la base. Esquema y migraciones sin cambios
+  (`git diff` de `api/prisma` vacío; 2 migraciones aplicadas).
+- **Respaldo previo** con `pg_dump -Fc` (estructura y datos), fuera del repositorio, en la carpeta
+  `lunarbudget-respaldos` del perfil de usuario: `lunarbudget_test_antes_T072_20261112_170613.dump`
+  (21 679 bytes). `pg_restore --list` confirma las 7 tablas con sus datos, las claves primarias, las
+  8 claves foráneas y el índice único.
+- **Estado previo**: 1 usuario, 2 cuentas, 7 categorías (ids 1–7), 6 movimientos (ids 1–6), 0 metas y
+  0 presupuestos; huella idéntica a la de T071.
+- Escrituras **solo** sobre datos de prueba del usuario 1, a través de la API real (script HTTP y
+  navegador) y, para observar M7 y M10, scripts de diagnóstico sobre la base local. No se usó Neon.
+
+**Resultados**
+
+| Caso | Pasos | Resultado observado | Evaluación |
+|---|---|---|---|
+| M1 | `POST` «Mascotas» (`gasto`); recargar `/movimientos` | 201, `CATId=8`, activa, `USUId=1`. En `/movimientos`, las categorías creadas (las `[M7]`) aparecen con Gasto y no con Ingreso tras recargar (FR-019). | ✅ |
+| M2 | `POST` « mascotas », «MASCOTAS» y «Comida» (`gasto`) | 409 `Ya existe la categoría "Mascotas" de tipo gasto` (dos veces); 409 contra el duplicado histórico «comida». Sin filas nuevas. | ✅ |
+| M3 | Desactivar «Mascotas», repetir, crear un movimiento con ella, reactivar, repetir, desactivar | 200 / 409 `ya se encuentra inactiva` / 409 `La categoría indicada está inactiva` (sin movimiento creado) / 200 / 409 `ya se encuentra activa` / 200. Sigue en la lista como «Inactiva» y no se ofrece en movimientos nuevos. | ✅ |
+| M4 | Editar la descripción del movimiento 2 (Gimnasio inactiva) reenviando todo; ídem en el 3 (INGRESO con categoría de gasto) | 200 en ambos; `CATId` 6 y 2 conservados y el tipo histórico sin corregir. En la interfaz, «(inactiva)» (T062). | ✅ |
+| M5 | Forzar por API: mov 2 → INGRESO con Gimnasio; mov 5 → GASTO con Salario; mov 2 → Comida (inactiva); mov 4 → Salario; `POST` INGRESO con Transporte; `POST` con `USUId` distinto; mov 4 → cuenta inactiva | 409 inactiva / 400 no corresponde / 409 inactiva / 400 / 400 / 400 `USUId no corresponde…` / 409 cuenta inactiva. Los movimientos no cambiaron. La interfaz limpia la categoría con aviso (T062). | ✅ |
+| M6 | Cambiar el tipo de «Comida» (con movimientos) por API y en la interfaz; cambiar el tipo de «Transporte» (sin movimientos) ida y vuelta; editar el color de «Varios» (tipo `otros`) | 409 `No se puede cambiar el tipo: la categoría tiene movimientos asociados`; en la interfaz, la advertencia general junto al tipo y el error en línea con el foco en el tipo. 200 y 200 en Transporte. 200 en Varios sin revalidar el tipo histórico. | ✅ |
+| M6 · D-1 | Editar «comida » (duplicado histórico, con espacio final) reenviando nombre y tipo idénticos y cambiando solo el color | **409** `Ya existe la categoría "Comida" de tipo gasto (inactiva)…`. Esperado: 200 (US3-9, US3-12). Desde el formulario web (que envía solo el color) → 200. | ❌ D-1 |
+| M7 | 3 pares de `POST` simultáneos con el mismo nombre y tipo | Cada par: un 201 y un 409 de duplicado; exactamente 1 fila por nombre. | ✅ |
+| M7 · error | Diagnóstico: dos transacciones `Serializable` concurrentes (lectura + creación), sin reintentos | La perdedora falla con `PrismaClientKnownRequestError` **`P2034`** («Transaction failed due to a write conflict or a deadlock»), sin `40001` en el mensaje. Coincide con `esErrorDeSerializacion`; no hace falta ninguna corrección. | ✅ |
+| M8 | `/categorias` y `/movimientos` a 360 px con datos reales | `/categorias`: lista, aviso de duplicados, formulario de creación y edición (con la nota del tipo histórico) sin desplazamiento horizontal. `/movimientos`: sin desplazamiento tras la corrección de I-1. | ✅ |
+| M9 | Abrir `/categorias` con los duplicados históricos | Aviso «Gasto: "Comida" (inactiva), "comida "» y la marca «Duplicada» en ambas. La huella de categorías y movimientos es idéntica antes y después de recargar. | ✅ |
+| M10 | Mecanismo controlado: una sesión bloquea la fila de «Transporte» con `SELECT … FOR UPDATE` 14 s (sin modificar datos); la API intenta desactivarla | 500 `Error al desactivar la categoría`; la API registró `… expirada (P2028)`; la categoría quedó sin cambios. La respuesta llegó a los ≈14 s (al liberarse el bloqueo), no a los 10 s (O-3). | ✅ parcial |
+| §4 | En `/movimientos`: registrar GASTO con Transporte e INGRESO sin categoría; editar monto y descripción; desactivar ambos | `POST` 201 ×2 (movimientos 7 y 8), `PATCH` 200 ×2, `PATCH …/desactivar` 200 ×2. En la base: 47.50 y descripción editada; ambos `MOVActiva=false`; asociaciones intactas. | ✅ |
+
+Para desactivar desde la interfaz, el diálogo nativo `window.confirm` se aceptó de forma automática
+en la pestaña; las peticiones a la API fueron reales.
+
+**Defectos y observaciones**
+
+- **D-1 (defecto abierto, severidad baja; FR-026, US3-9, US3-12).** `cambiosCategoria`
+  (`api/src/modules/categorias/categorias.rules.ts`) considera que el nombre cambia si
+  `CATNombre.trim() !== existente.CATNombre`. Si el nombre guardado tiene espacios alrededor (dato
+  histórico, como «comida »), reenviar exactamente el mismo nombre cuenta como cambio. Eso dispara la
+  unicidad y el 409, aunque solo cambie el color. No afecta a la web, que envía solo los campos
+  modificados, pero sí a cualquier cliente que reenvíe la categoría completa. Las pruebas
+  automatizadas no lo cubrían: sus duplicados históricos no tenían espacios en el nombre guardado.
+  Corrección propuesta (pendiente de aprobación): no considerar cambio un nombre recibido idéntico al
+  guardado (`CATNombre !== existente.CATNombre && CATNombre.trim() !== existente.CATNombre`), con una
+  prueba de regresión. Hay que resolver la tensión de redacción entre FR-026 («normalizado como se
+  guardaría») y US3-12 («los mismos valores que ya están guardados»).
+- **O-3 (observación, relacionada con R-12).** Si la transacción espera un bloqueo, `P2028` no corta
+  la espera: la API responde cuando la sentencia bloqueada termina (aquí ≈14 s). El resultado es el
+  esperado (500 genérico, sin cambios, sin reintento).
+- **M10 pendiente en parte**: la suspensión del compute y el agotamiento de `maxWait` (no obtener una
+  conexión en 5 s) no son reproducibles de forma segura en PostgreSQL local. Solo se verificó la vía
+  del `timeout` de la transacción. Queda para un entorno Neon aislado (rama de pruebas).
+- Ningún caso necesitó un segundo usuario. La pertenencia a otro usuario (404) sigue cubierta solo
+  por las pruebas automatizadas, para no crear datos fuera del conjunto de pruebas.
+
+**Estado final de la base**: 1 usuario, 2 cuentas, 13 categorías (ids 1–11, 13 y 16; los saltos de
+la secuencia se deben a las inserciones fallidas de M7), 8 movimientos (6 activos), 0 metas,
+0 presupuestos, 2 migraciones; ninguna fila de otro usuario. Datos nuevos de T072: «Mascotas»
+(inactiva), cinco categorías `[M7]` y los movimientos 7 y 8 (inactivos). Cambios en datos previos:
+descripciones de los movimientos 2 y 3, colores de «Varios» y «comida ».
+
+## T073
+
+Pendiente.
