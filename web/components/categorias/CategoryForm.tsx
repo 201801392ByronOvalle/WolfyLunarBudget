@@ -1,14 +1,25 @@
 "use client";
 
 // components/categorias/CategoryForm.tsx
-// Formulario de creación de categorías (US2). La validación del cliente es una ayuda de uso; la
-// validación definitiva, la unicidad y el usuario propietario los decide la API.
+// Formulario de creación (US2) y edición (US3) de categorías. La validación del cliente es una
+// ayuda de uso; la validación definitiva, la unicidad y el usuario propietario los decide la API.
+//
+// En edición, cada campo se valida y se envía solo si cambió respecto del valor guardado (FR-026):
+// un valor histórico que no se toca (por ejemplo, un tipo fuera de los tres valores) se conserva.
+// El padre debe montar el formulario con `key` distinta por categoría para reiniciar su estado.
 import { FormEvent, useRef, useState } from "react";
-import { crearCategoria } from "@/services/categorias.service";
-import { TipoCategoria } from "@/types/categoria";
+import { flushSync } from "react-dom";
+import { crearCategoria, editarCategoria } from "@/services/categorias.service";
+import { Categoria, EditarCategoriaPayload, TIPOS_CATEGORIA, TipoCategoria } from "@/types/categoria";
 
 interface CategoryFormProps {
+    /** Categoría a editar; sin ella el formulario crea una nueva. */
+    categoria?: Categoria | null;
+    /** Mensaje de confirmación con el que se monta el formulario (por ejemplo, tras editar). */
+    mensajeInicial?: string | null;
     onCategoriaCreada: () => void;
+    onCategoriaEditada?: (categoria: Categoria) => void;
+    onCancelarEdicion?: () => void;
 }
 
 type Campo = "nombre" | "tipo" | "color" | "icono";
@@ -16,7 +27,8 @@ type ErroresCampo = Partial<Record<Campo, string>>;
 
 interface Formulario {
     nombre: string;
-    tipo: TipoCategoria | "";
+    // string y no TipoCategoria: una categoría histórica puede tener un tipo fuera de los tres.
+    tipo: string;
     color: string;
     icono: string;
 }
@@ -25,7 +37,8 @@ const LONGITUD_MAXIMA = 50;
 const PATRON_COLOR = /^#[0-9a-fA-F]{6}$/;
 const COLOR_SELECTOR_POR_OMISION = "#7c3aed";
 const ORDEN_CAMPOS: Campo[] = ["nombre", "tipo", "color", "icono"];
-const FORMULARIO_INICIAL: Formulario = { nombre: "", tipo: "", color: "", icono: "" };
+const FORMULARIO_VACIO: Formulario = { nombre: "", tipo: "", color: "", icono: "" };
+const AVISO_TIPO_CON_MOVIMIENTOS = "Las categorías con movimientos asociados no permiten cambiar su tipo.";
 
 const MENSAJES_CAMPO: Record<Campo, string> = {
     nombre: "Escribe un nombre de 1 a 50 caracteres.",
@@ -69,36 +82,80 @@ const OPCIONES_TIPO: { valor: TipoCategoria; etiqueta: string; ejemplo: string; 
 const CLASE_CONTROL =
     "w-full rounded-xl border bg-zinc-950 p-3 text-sm text-zinc-100 placeholder:text-zinc-400 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 disabled:cursor-not-allowed disabled:opacity-50";
 
+const CLASE_BOTON_PRIMARIO =
+    "shrink-0 whitespace-nowrap rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 disabled:cursor-not-allowed disabled:opacity-60";
+
+const CLASE_BOTON_SECUNDARIO =
+    "shrink-0 whitespace-nowrap rounded-xl border border-zinc-700 px-5 py-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 disabled:cursor-not-allowed disabled:opacity-60";
+
 function claseControl(conError: boolean): string {
     return `${CLASE_CONTROL} ${conError ? "border-red-500/70" : "border-zinc-700 hover:border-zinc-600"}`;
 }
 
-function validar(formulario: Formulario): ErroresCampo {
+function formularioDesde(categoria: Categoria): Formulario {
+    return {
+        nombre: categoria.CATNombre,
+        tipo: categoria.CATTipo,
+        color: categoria.CATColor ?? "",
+        icono: categoria.CATIcono ?? "",
+    };
+}
+
+// Qué campos tocó el usuario respecto del valor cargado. Se compara el texto tal cual (sin recortar)
+// para que un valor histórico con espacios que no se edita no se envíe ni se normalice (FR-026).
+// La API vuelve a comparar contra lo persistido y es quien decide.
+function camposCambiados(formulario: Formulario, original: Formulario): Record<Campo, boolean> {
+    return {
+        nombre: formulario.nombre !== original.nombre,
+        tipo: formulario.tipo !== original.tipo,
+        color: formulario.color !== original.color,
+        icono: formulario.icono !== original.icono,
+    };
+}
+
+// En creación se valida todo; en edición, solo lo que cambió.
+function validar(formulario: Formulario, cambiados: Record<Campo, boolean> | null): ErroresCampo {
     const errores: ErroresCampo = {};
+    const debeValidar = (campo: Campo) => cambiados === null || cambiados[campo];
+
     const nombre = formulario.nombre.trim();
-    if (nombre === "" || nombre.length > LONGITUD_MAXIMA) errores.nombre = MENSAJES_CAMPO.nombre;
-    if (formulario.tipo === "") errores.tipo = MENSAJES_CAMPO.tipo;
+    if (debeValidar("nombre") && (nombre === "" || nombre.length > LONGITUD_MAXIMA)) {
+        errores.nombre = MENSAJES_CAMPO.nombre;
+    }
+    if (debeValidar("tipo") && !(TIPOS_CATEGORIA as readonly string[]).includes(formulario.tipo)) {
+        errores.tipo = MENSAJES_CAMPO.tipo;
+    }
     const color = formulario.color.trim();
-    if (color !== "" && !PATRON_COLOR.test(color)) errores.color = MENSAJES_CAMPO.color;
-    if (formulario.icono.trim().length > LONGITUD_MAXIMA) errores.icono = MENSAJES_CAMPO.icono;
+    if (debeValidar("color") && color !== "" && !PATRON_COLOR.test(color)) errores.color = MENSAJES_CAMPO.color;
+    if (debeValidar("icono") && formulario.icono.trim().length > LONGITUD_MAXIMA) errores.icono = MENSAJES_CAMPO.icono;
     return errores;
 }
 
 // Asocia un rechazo de la API al campo que corresponde: los de validación se muestran con el texto
-// del formulario; el de duplicado conserva el mensaje de la API (nombra la categoría existente).
+// del formulario; los de duplicado y tipo con movimientos conservan el mensaje de la API.
 function errorDeApi(mensaje: string): { campo: Campo; texto: string } | null {
     if (mensaje.startsWith("Ya existe la categoría")) return { campo: "nombre", texto: mensaje };
+    if (mensaje.startsWith("No se puede cambiar el tipo")) return { campo: "tipo", texto: mensaje };
     const prefijo = Object.keys(PREFIJOS_API).find((clave) => mensaje.startsWith(clave));
     if (!prefijo) return null;
     const campo = PREFIJOS_API[prefijo];
     return { campo, texto: MENSAJES_CAMPO[campo] };
 }
 
-export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
-    const [formulario, setFormulario] = useState<Formulario>(FORMULARIO_INICIAL);
+export default function CategoryForm({
+    categoria = null,
+    mensajeInicial = null,
+    onCategoriaCreada,
+    onCategoriaEditada,
+    onCancelarEdicion,
+}: CategoryFormProps) {
+    const enEdicion = categoria !== null;
+    const original = categoria ? formularioDesde(categoria) : FORMULARIO_VACIO;
+
+    const [formulario, setFormulario] = useState<Formulario>(original);
     const [errores, setErrores] = useState<ErroresCampo>({});
     const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
-    const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+    const [mensajeExito, setMensajeExito] = useState<string | null>(mensajeInicial);
     const [enviando, setEnviando] = useState(false);
 
     const nombreRef = useRef<HTMLInputElement>(null);
@@ -118,6 +175,31 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
         setMensajeExito(null);
     }
 
+    // Registra el rechazo y devuelve el campo que debe recibir el foco, si corresponde a uno.
+    function manejarRechazo(excepcion: unknown): Campo | null {
+        // Los rechazos de la API llegan como Error con su mensaje; un fallo de red o una respuesta
+        // ilegible llega con otro tipo de error.
+        const esRechazoApi = excepcion instanceof Error && excepcion.name === "Error";
+        if (!esRechazoApi) {
+            setErrorGeneral("No se pudo conectar con el servidor. Tus datos siguen aquí; inténtalo de nuevo.");
+            return null;
+        }
+        const asociado = errorDeApi(excepcion.message);
+        if (asociado) {
+            setErrores({ [asociado.campo]: asociado.texto });
+            return asociado.campo;
+        }
+        setErrorGeneral(excepcion.message);
+        return null;
+    }
+
+    // Los campos están deshabilitados mientras se envía: se reactivan de forma síncrona antes de
+    // mover el foco, porque un control deshabilitado no puede recibirlo.
+    function terminarEnvio(campoConError: Campo | null) {
+        flushSync(() => setEnviando(false));
+        if (campoConError) enfocar(campoConError);
+    }
+
     async function manejarEnvio(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
         if (enviando) return;
@@ -125,11 +207,34 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
         setErrorGeneral(null);
         setMensajeExito(null);
 
-        const erroresValidacion = validar(formulario);
+        const cambiados = enEdicion ? camposCambiados(formulario, original) : null;
+        const erroresValidacion = validar(formulario, cambiados);
         setErrores(erroresValidacion);
         const primerError = ORDEN_CAMPOS.find((campo) => erroresValidacion[campo]);
         if (primerError) {
             enfocar(primerError);
+            return;
+        }
+
+        if (categoria && cambiados) {
+            const payload: EditarCategoriaPayload = {};
+            if (cambiados.nombre) payload.CATNombre = formulario.nombre.trim();
+            if (cambiados.tipo) payload.CATTipo = formulario.tipo as TipoCategoria;
+            if (cambiados.color) payload.CATColor = formulario.color.trim() || null;
+            if (cambiados.icono) payload.CATIcono = formulario.icono.trim() || null;
+            if (Object.keys(payload).length === 0) {
+                setErrorGeneral("No hay cambios por guardar.");
+                return;
+            }
+
+            setEnviando(true);
+            try {
+                const respuesta = await editarCategoria(categoria.CATId, payload);
+                // El padre vuelve al modo creación (nueva key): este formulario se desmonta.
+                onCategoriaEditada?.(respuesta.data);
+            } catch (excepcion) {
+                terminarEnvio(manejarRechazo(excepcion));
+            }
             return;
         }
 
@@ -141,40 +246,42 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
                 CATColor: formulario.color.trim() || null,
                 CATIcono: formulario.icono.trim() || null,
             });
-            setFormulario(FORMULARIO_INICIAL);
+            setFormulario(FORMULARIO_VACIO);
             setMensajeExito(`Categoría “${respuesta.data.CATNombre}” creada.`);
+            setEnviando(false);
             onCategoriaCreada();
         } catch (excepcion) {
-            // Los rechazos de la API llegan como Error con su mensaje; un fallo de red o una
-            // respuesta ilegible llega con otro tipo de error.
-            const esRechazoApi = excepcion instanceof Error && excepcion.name === "Error";
-            if (!esRechazoApi) {
-                setErrorGeneral("No se pudo conectar con el servidor. Tus datos siguen aquí; inténtalo de nuevo.");
-                return;
-            }
-            const asociado = errorDeApi(excepcion.message);
-            if (asociado) {
-                setErrores({ [asociado.campo]: asociado.texto });
-                enfocar(asociado.campo);
-            } else {
-                setErrorGeneral(excepcion.message);
-            }
-        } finally {
-            setEnviando(false);
+            terminarEnvio(manejarRechazo(excepcion));
         }
     }
 
     const colorValido = PATRON_COLOR.test(formulario.color.trim());
     const longitudNombre = formulario.nombre.trim().length;
+    const tipoHistorico =
+        enEdicion && !(TIPOS_CATEGORIA as readonly string[]).includes(original.tipo) ? original.tipo : null;
+    const descripcionTipo = [
+        enEdicion ? "categoria-tipo-aviso" : null,
+        errores.tipo ? "categoria-tipo-error" : null,
+    ]
+        .filter(Boolean)
+        .join(" ");
+
+    let textoBoton = enEdicion ? "Guardar cambios" : "Crear categoría";
+    if (enviando) textoBoton = enEdicion ? "Guardando…" : "Creando…";
 
     return (
-        <section aria-labelledby="titulo-nueva-categoria" className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
+        <section
+            aria-labelledby="titulo-formulario-categoria"
+            className={`rounded-2xl border bg-zinc-900 p-5 sm:p-6 ${enEdicion ? "border-violet-500/50" : "border-zinc-800"}`}
+        >
             <div className="mb-6">
-                <h2 id="titulo-nueva-categoria" className="text-lg font-semibold text-balance">
-                    Nueva categoría
+                <h2 id="titulo-formulario-categoria" className="text-lg font-semibold text-balance">
+                    {enEdicion ? "Editar categoría" : "Nueva categoría"}
                 </h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                    Clasifica tus movimientos. El nombre debe ser único dentro de cada tipo.
+                <p className="mt-1 break-words text-sm text-zinc-400">
+                    {enEdicion
+                        ? `Estás editando “${categoria.CATNombre.trim()}”. Solo se guardan los campos que cambies.`
+                        : "Clasifica tus movimientos. El nombre debe ser único dentro de cada tipo."}
                 </p>
             </div>
 
@@ -196,11 +303,13 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
                         type="text"
                         autoComplete="off"
                         placeholder="Ej.: Mascotas…"
-                        maxLength={LONGITUD_MAXIMA + 20}
+                        maxLength={Math.max(LONGITUD_MAXIMA + 20, original.nombre.length)}
                         className={claseControl(Boolean(errores.nombre))}
                         value={formulario.nombre}
                         onChange={(evento) => actualizar("nombre", evento.target.value)}
                         disabled={enviando}
+                        // Edición iniciada por el usuario con «Editar»: el foco va al primer campo.
+                        autoFocus={enEdicion}
                         aria-invalid={Boolean(errores.nombre)}
                         aria-describedby={errores.nombre ? "categoria-nombre-error" : undefined}
                         required
@@ -216,10 +325,18 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
                 <fieldset
                     className="grid gap-2"
                     aria-invalid={Boolean(errores.tipo)}
-                    aria-describedby={errores.tipo ? "categoria-tipo-error" : undefined}
+                    aria-describedby={descripcionTipo || undefined}
                     disabled={enviando}
                 >
                     <legend className="mb-2 text-sm font-medium text-zinc-200">Tipo</legend>
+                    {enEdicion ? (
+                        <p id="categoria-tipo-aviso" className="text-xs text-zinc-400">
+                            {AVISO_TIPO_CON_MOVIMIENTOS}
+                            {tipoHistorico
+                                ? ` Tipo guardado: “${tipoHistorico}” (valor histórico); se conserva si no eliges otro.`
+                                : null}
+                        </p>
+                    ) : null}
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                         {OPCIONES_TIPO.map((opcion, indice) => (
                             <label
@@ -254,7 +371,7 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
 
                 <div className="grid gap-6 md:grid-cols-2">
                     {/* Color */}
-                    <div className="grid gap-2 content-start">
+                    <div className="grid content-start gap-2">
                         <label htmlFor="categoria-color" className="text-sm font-medium text-zinc-200">
                             Color <span className="font-normal text-zinc-400">(opcional)</span>
                         </label>
@@ -296,7 +413,7 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
                     </div>
 
                     {/* Ícono */}
-                    <div className="grid gap-2 content-start">
+                    <div className="grid content-start gap-2">
                         <label htmlFor="categoria-icono" className="text-sm font-medium text-zinc-200">
                             Ícono <span className="font-normal text-zinc-400">(opcional)</span>
                         </label>
@@ -338,14 +455,21 @@ export default function CategoryForm({ onCategoriaCreada }: CategoryFormProps) {
                         {mensajeExito ? <p className="text-emerald-300">{mensajeExito}</p> : null}
                     </div>
 
-                    <button
-                        type="submit"
-                        className="shrink-0 whitespace-nowrap rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={enviando}
-                        aria-busy={enviando}
-                    >
-                        {enviando ? "Creando…" : "Crear categoría"}
-                    </button>
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                        {enEdicion ? (
+                            <button
+                                type="button"
+                                className={CLASE_BOTON_SECUNDARIO}
+                                onClick={onCancelarEdicion}
+                                disabled={enviando}
+                            >
+                                Cancelar
+                            </button>
+                        ) : null}
+                        <button type="submit" className={CLASE_BOTON_PRIMARIO} disabled={enviando} aria-busy={enviando}>
+                            {textoBoton}
+                        </button>
+                    </div>
                 </div>
             </form>
         </section>

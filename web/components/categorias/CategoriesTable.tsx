@@ -7,6 +7,9 @@ import { Categoria, GrupoDuplicadoCategoria } from "@/types/categoria";
 
 interface CategoriesTableProps {
     refreshSignal?: number;
+    /** Id de la categoría que se está editando, para resaltar su fila. */
+    categoriaEnEdicionId?: number | null;
+    onEditar?: (categoria: Categoria) => void;
 }
 
 const ETIQUETAS_TIPO: Record<string, string> = {
@@ -30,7 +33,11 @@ function colorTipo(tipo: string): string {
     return COLORES_TIPO[tipo] ?? "text-zinc-400";
 }
 
-export default function CategoriesTable({ refreshSignal = 0 }: CategoriesTableProps) {
+export default function CategoriesTable({
+    refreshSignal = 0,
+    categoriaEnEdicionId = null,
+    onEditar,
+}: CategoriesTableProps) {
     const [categorias, setCategorias] = useState<Categoria[]>([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -147,7 +154,10 @@ export default function CategoriesTable({ refreshSignal = 0 }: CategoriesTablePr
                         {categorias.map((categoria) => (
                             <li
                                 key={categoria.CATId}
-                                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4"
+                                aria-current={categoriaEnEdicionId === categoria.CATId ? "true" : undefined}
+                                className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-zinc-950 p-4 ${
+                                    categoriaEnEdicionId === categoria.CATId ? "border-violet-500/60" : "border-zinc-800"
+                                }`}
                             >
                                 <div className="flex min-w-0 items-center gap-3">
                                     {categoria.CATColor ? (
@@ -186,6 +196,17 @@ export default function CategoriesTable({ refreshSignal = 0 }: CategoriesTablePr
                                     >
                                         {categoria.CATActiva ? "Activa" : "Inactiva"}
                                     </span>
+                                    {onEditar ? (
+                                        <button
+                                            type="button"
+                                            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                            onClick={() => onEditar(categoria)}
+                                            disabled={categoriaEnEdicionId === categoria.CATId}
+                                            aria-label={`Editar la categoría ${categoria.CATNombre.trim()}`}
+                                        >
+                                            {categoriaEnEdicionId === categoria.CATId ? "Editando" : "Editar"}
+                                        </button>
+                                    ) : null}
                                 </div>
                             </li>
                         ))}

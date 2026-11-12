@@ -1,11 +1,12 @@
 // services/categorias.service.ts
-import { apiGet, apiPost } from "./api";
+import { apiGet, apiPatch, apiPost } from "./api";
 import {
     Categoria,
     CategoriaResponse,
     CategoriasResponse,
     CrearCategoriaPayload,
     DuplicadosCategoriasResponse,
+    EditarCategoriaPayload,
 } from "@/types/categoria";
 
 export function getCategorias() {
@@ -26,4 +27,10 @@ export function getDiagnosticoDuplicados() {
 // Error con el mensaje de la API (validación, duplicado o concurrencia).
 export function crearCategoria(payload: CrearCategoriaPayload) {
     return apiPost<CategoriaResponse>("/api/categorias", payload);
+}
+
+// Edita una categoría propia. La API valida y escribe solo los campos que cambian (FR-026); ante un
+// rechazo (404, 400, 409 por duplicado o por tipo con movimientos) lanza un Error con su mensaje.
+export function editarCategoria(id: number, payload: EditarCategoriaPayload) {
+    return apiPatch<CategoriaResponse>(`/api/categorias/${id}`, payload);
 }
