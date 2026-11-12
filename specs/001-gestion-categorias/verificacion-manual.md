@@ -123,8 +123,9 @@ manual en `quickstart.md`; lo cubren las pruebas unitarias de `describirErrorArr
 
 ## T072 — Casos M1–M10 y regresión §4 (2026-11-12)
 
-**Resultado: ejecutada y evaluada.** Todos los casos se ejecutaron. Queda un defecto abierto (D-1)
-y una parte de M10 que no se puede reproducir de forma segura en local.
+**Resultado: ejecutada y evaluada.** Todos los casos se ejecutaron. Se encontró un defecto, D-1,
+corregido después en `483b3be`, y queda una parte de M10 que no se puede reproducir de forma segura en
+local.
 
 **Preparación y salvaguardas**
 
@@ -150,7 +151,7 @@ y una parte de M10 que no se puede reproducir de forma segura en local.
 | M4 | Editar la descripción del movimiento 2 (Gimnasio inactiva) reenviando todo; ídem en el 3 (INGRESO con categoría de gasto) | 200 en ambos; `CATId` 6 y 2 conservados y el tipo histórico sin corregir. En la interfaz, «(inactiva)» (T062). | ✅ |
 | M5 | Forzar por API: mov 2 → INGRESO con Gimnasio; mov 5 → GASTO con Salario; mov 2 → Comida (inactiva); mov 4 → Salario; `POST` INGRESO con Transporte; `POST` con `USUId` distinto; mov 4 → cuenta inactiva | 409 inactiva / 400 no corresponde / 409 inactiva / 400 / 400 / 400 `USUId no corresponde…` / 409 cuenta inactiva. Los movimientos no cambiaron. La interfaz limpia la categoría con aviso (T062). | ✅ |
 | M6 | Cambiar el tipo de «Comida» (con movimientos) por API y en la interfaz; cambiar el tipo de «Transporte» (sin movimientos) ida y vuelta; editar el color de «Varios» (tipo `otros`) | 409 `No se puede cambiar el tipo: la categoría tiene movimientos asociados`; en la interfaz, la advertencia general junto al tipo y el error en línea con el foco en el tipo. 200 y 200 en Transporte. 200 en Varios sin revalidar el tipo histórico. | ✅ |
-| M6 · D-1 | Editar «comida » (duplicado histórico, con espacio final) reenviando nombre y tipo idénticos y cambiando solo el color | **409** `Ya existe la categoría "Comida" de tipo gasto (inactiva)…`. Esperado: 200 (US3-9, US3-12). Desde el formulario web (que envía solo el color) → 200. | ❌ D-1 |
+| M6 · D-1 | Editar «comida » (duplicado histórico, con espacio final) reenviando nombre y tipo idénticos y cambiando solo el color | **409** `Ya existe la categoría "Comida" de tipo gasto (inactiva)…`. Esperado: 200 (US3-9, US3-12). Desde el formulario web (que envía solo el color) → 200. | ❌ D-1 (corregido en `483b3be`: ahora 200) |
 | M7 | 3 pares de `POST` simultáneos con el mismo nombre y tipo | Cada par: un 201 y un 409 de duplicado; exactamente 1 fila por nombre. | ✅ |
 | M7 · error | Diagnóstico: dos transacciones `Serializable` concurrentes (lectura + creación), sin reintentos | La perdedora falla con `PrismaClientKnownRequestError` **`P2034`** («Transaction failed due to a write conflict or a deadlock»), sin `40001` en el mensaje. Coincide con `esErrorDeSerializacion`; no hace falta ninguna corrección. | ✅ |
 | M8 | `/categorias` y `/movimientos` a 360 px con datos reales | `/categorias`: lista, aviso de duplicados, formulario de creación y edición (con la nota del tipo histórico) sin desplazamiento horizontal. `/movimientos`: sin desplazamiento tras la corrección de I-1. | ✅ |
@@ -163,7 +164,8 @@ en la pestaña; las peticiones a la API fueron reales.
 
 **Defectos y observaciones**
 
-- **D-1 (defecto abierto, severidad baja; FR-026, US3-9, US3-12).** `cambiosCategoria`
+- **D-1 (defecto corregido el 2026-11-12, commit `483b3be`; severidad baja; FR-026, US3-9, US3-12).**
+  Descripción original, conservada: `cambiosCategoria`
   (`api/src/modules/categorias/categorias.rules.ts`) considera que el nombre cambia si
   `CATNombre.trim() !== existente.CATNombre`. Si el nombre guardado tiene espacios alrededor (dato
   histórico, como «comida »), reenviar exactamente el mismo nombre cuenta como cambio. Eso dispara la
@@ -174,6 +176,26 @@ en la pestaña; las peticiones a la API fueron reales.
   guardado (`CATNombre !== existente.CATNombre && CATNombre.trim() !== existente.CATNombre`), con una
   prueba de regresión. Hay que resolver la tensión de redacción entre FR-026 («normalizado como se
   guardaría») y US3-12 («los mismos valores que ya están guardados»).
+  - **Regla aprobada por Andrés**: un campo reenviado exactamente igual al valor guardado no es un
+    cambio, aunque sea un dato histórico que no cumple las validaciones actuales. Si el valor cambia
+    de verdad, se aplican la normalización, la validación y la unicidad existentes. Nunca se
+    normaliza un valor histórico que no cambió.
+  - **Corrección** (`483b3be`): `cambiosCategoria` añade `CATNombre !== existente.CATNombre` antes de
+    comparar el nombre recortado, y `cambiaTextoOpcional` devuelve «sin cambio» si el valor recibido
+    es idéntico al guardado. Así la regla se aplica también a `CATColor` y `CATIcono`, que tenían la
+    misma pauta. `CATTipo` ya se comparaba sin normalizar.
+  - **Pruebas de regresión** (fallaban antes de la corrección: 409, 400 y `nombre: true`; pasan
+    después): 3 HTTP en `categorias.edicion.test.ts` (nombre histórico «comida » reenviado idéntico
+    más color → 200 escribiendo solo `CATColor`, sin unicidad; un cambio real —nombre recortado o
+    vacío— sigue respondiendo 409/400 sin escribir; color histórico « #ABC» reenviado idéntico no se
+    revalida) y 2 unitarias en `categorias.rules.test.ts`. Suite completa: 240/240; `typecheck`,
+    `tsc` y compilación sin errores (compilada fuera de `api/dist`).
+  - **Evidencia en PostgreSQL local**: destino verificado (`lunarbudget_test` en `::1:5432`); la API
+    principal se reinició con el código corregido y servía las mismas 13 categorías que la base.
+    `PATCH /api/categorias/3` con `{"CATNombre":"comida ","CATTipo":"gasto","CATColor":"#15803d"}` →
+    **200**; en la base, `CATNombre` sigue siendo «comida » (7 caracteres) y `CATColor` = `#15803d`.
+    `PATCH` con `{"CATNombre":"comida"}` (cambio real) → **409** `Ya existe la categoría "Comida" de
+    tipo gasto (inactiva)…`, sin cambios en la fila.
 - **O-3 (observación, relacionada con R-12).** Si la transacción espera un bloqueo, `P2028` no corta
   la espera: la API responde cuando la sentencia bloqueada termina (aquí ≈14 s). El resultado es el
   esperado (500 genérico, sin cambios, sin reintento).

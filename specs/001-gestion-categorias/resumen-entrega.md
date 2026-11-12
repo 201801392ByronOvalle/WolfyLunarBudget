@@ -59,7 +59,7 @@ Sin cambios en `api/prisma/` (esquema, migraciones ni seed) ni en `api/dist/`.
 
 | Puerta | Resultado |
 |---|---|
-| `api/` `npm test` | 235/235 en 9 archivos |
+| `api/` `npm test` | 235/235 en 9 archivos (240/240 tras las pruebas de regresión de D-1) |
 | `api/` `npm run typecheck` y `npx tsc --noEmit` | Sin errores |
 | `api/` build (`tsc`) | Sin errores; compilado con `--outDir` en una carpeta temporal para no modificar `api/dist/` versionado (DA-08, R-11) |
 | `web/` `npx tsc --noEmit`, `npm run lint` | Sin errores |
@@ -104,8 +104,9 @@ T072 ejecutada el 2026-11-12 en PostgreSQL local (detalle en `verificacion-manua
       nuevos.
 - [x] **M4–M5**: conservar una categoría inactiva al editar; cambiar el tipo (409/400 si se fuerza por
       API).
-- [x] **M6**: rechazo del cambio de tipo con movimientos asociados. **Defecto abierto D-1**: reenviar
-      un nombre histórico con espacios alrededor, sin cambiarlo, responde 409.
+- [x] **M6**: rechazo del cambio de tipo con movimientos asociados. El defecto D-1 (reenviar un
+      nombre histórico con espacios alrededor, sin cambiarlo, respondía 409) se corrigió en `483b3be`
+      y se verificó en PostgreSQL local.
 - [x] **M7**: dos `POST` simultáneos → 201 + 409; la forma observada es `P2034`, que reconoce
       `esErrorDeSerializacion`.
 - [x] **M8**: pantallas a 360 px con datos reales.

@@ -378,7 +378,7 @@ antes de integrar.
 
 ### Estado de la verificación (T074, 2026-11-12)
 
-- **Columna "Pruebas automatizadas": en verde.** API: 235/235 pruebas en 9 archivos (T009–T011,
+- **Columna "Pruebas automatizadas": en verde.** API: 235/235 pruebas en 9 archivos; 240/240 tras la regresión de D-1 (T009–T011,
   T019, T022, T030, T038, T045, T051); web: 7/7 (T052). `typecheck`, `tsc`, `lint` y `next build`
   sin errores (T063, T064). Revisiones estáticas sin hallazgos (T070). Todas usan el doble de Prisma
   con `DATABASE_URL` en un host `.invalid`: **no prueban PostgreSQL real**.
@@ -397,8 +397,9 @@ antes de integrar.
   de 8 px a 360 px en la lista de movimientos con montos largos), corregida en `1e7969d`, relacionada con FR-017 /
   SC-007 (M8). **T071 verificada** (A1–A5 cumplen el contrato de arranque, 78/69, sin valores
   sensibles en consola). **T072 ejecutada**: M1–M9 y §4 conformes con PostgreSQL real; M7 confirma
-  `P2034`; M10 verificado solo por la vía del `timeout`. Defecto abierto **D-1** (FR-026/US3-12:
-  reenviar un nombre histórico con espacios alrededor se trata como cambio → 409) y observación O-3
+  `P2034`; M10 verificado solo por la vía del `timeout`. Defecto **D-1** (FR-026/US3-12:
+  reenviar un nombre histórico con espacios alrededor se trata como cambio → 409), **corregido en
+  `483b3be`** con pruebas de regresión y verificado en PostgreSQL local; observación O-3
   (`P2028` no corta la espera de un bloqueo). T073 sigue pendiente.
 
 ---
