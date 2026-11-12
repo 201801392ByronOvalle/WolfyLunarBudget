@@ -226,7 +226,7 @@ crear, editar y desactivar, y `USUId` según D2 (FR-021 a FR-024, FR-026, amplia
 - [X] T059 [US5] Modificar web/components/movimientos/MovementsTable.tsx (depende de T057): cargar `getCategorias()` (todas las del usuario); en edición, opciones de `filtrarCategoriasParaMovimiento(…, formularioEdicion.tipo, movimiento.CATId)` con la marca correspondiente; al cambiar el tipo, limpiar la categoría que deja de corresponder y avisar; historial sin cambios
 - [X] T060 [US5] Buscar consumidores de `getCategoriasActivas` en `web/`; si no queda ninguno, eliminarla de web/services/categorias.service.ts
 - [X] T061 [US5] [AUTO] Verificar: `npm test` en `api/` (T051) y en `web/` (T052); `npx tsc --noEmit` y `npm run lint` en `web/`
-- [ ] T062 [US5] [MANUAL-LECTURA] Compatibilidad del frontend con Movimientos (research R11), con API y web en local y **sin guardar nada**: en `/movimientos` el selector de nuevo movimiento muestra solo categorías activas del tipo elegido y se limpia con aviso al cambiar el tipo; si existe un movimiento con categoría inactiva, al abrir su edición aparece "(inactiva)" y se cancela sin guardar. Si no existe ese dato, marcar ese punto como "no verificable en lectura" y cubrirlo con M4 en T072
+- [X] T062 [US5] [MANUAL-LECTURA] Compatibilidad del frontend con Movimientos (research R11), con API y web en local y **sin guardar nada**: en `/movimientos` el selector de nuevo movimiento muestra solo categorías activas del tipo elegido y se limpia con aviso al cambiar el tipo; si existe un movimiento con categoría inactiva, al abrir su edición aparece "(inactiva)" y se cancela sin guardar. Si no existe ese dato, marcar ese punto como "no verificable en lectura" y cubrirlo con M4 en T072 — **Verificada el 2026-11-12** en PostgreSQL local aislado (`lunarbudget_test`), sin escrituras; evidencia e incidencia I-1 (desbordamiento a 360 px) en [verificacion-manual.md](./verificacion-manual.md)
 
 **Checkpoint**: todas las historias funcionales.
 
@@ -391,6 +391,11 @@ antes de integrar.
   `P2028` real (M10), arranque A1–A5, desactivación con movimientos reales (M3), conservación de
   categorías históricas con datos reales (M4, M5), duplicados históricos reales (M9), regresión §4 y
   usabilidad SC-001. La excepción del Principio VII sigue abierta en el roadmap.
+- **Actualización 2026-11-12**: ya existe una base aislada local (`lunarbudget_test`, PostgreSQL
+  18.7 en `localhost`). **T062 verificada** con la API real y sin escrituras
+  ([verificacion-manual.md](./verificacion-manual.md)); detectó la incidencia **I-1** (desbordamiento
+  de 8 px a 360 px en la lista de movimientos con montos largos), abierta y relacionada con FR-017 /
+  SC-007 (M8). T071–T073 siguen pendientes.
 
 ---
 

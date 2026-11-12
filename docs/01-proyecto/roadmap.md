@@ -180,7 +180,10 @@ con verificaciones manuales que **todavía no se han ejecutado**:
 - [ ] Casos M1–M10 y regresión de Movimientos §4, **solo en una base aislada**, nunca en la base Neon
       actual. En M7 anotar la forma del error de serialización observado.
 - [ ] M11: observación de usabilidad SC-001 en la base aislada.
-- [ ] Revisión de `/movimientos` con la API real, sin guardar datos (T062).
+- [x] Revisión de `/movimientos` con la API real, sin guardar datos (T062), el 2026-11-12 en una base
+      PostgreSQL local aislada. Detectó la incidencia I-1 (desbordamiento a 360 px con montos
+      largos), pendiente de corrección
+      (`specs/001-gestion-categorias/verificacion-manual.md`).
 
 Cuando se resuelva DA-06, estos casos deberían automatizarse como pruebas de integración.
 
