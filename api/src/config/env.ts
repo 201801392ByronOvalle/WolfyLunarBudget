@@ -9,4 +9,8 @@ export const env = {
 
     // Entorno actual de ejecución: development, production, etc.
     nodeEnv: process.env.NODE_ENV || "development",
+
+    // Identificador del usuario actual (configuración temporal del MVP; NO es autenticación).
+    // Se valida al iniciar el servidor en lib/usuario-actual.ts; no tiene valor por omisión.
+    currentUserIdRaw: process.env.CURRENT_USER_ID,
 };
