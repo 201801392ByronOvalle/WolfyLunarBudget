@@ -366,7 +366,8 @@ export default function MovementsTable({ refreshSignal }: MovementsTableProps) {
                                     </p>
                                 </div>
 
-                                <div className="flex items-center gap-4">
+                                {/* flex-wrap: con montos largos, los botones bajan de línea en móvil (I-1). */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                                     <p className={`font-bold ${colorTipo(movimiento.MOVTipo)}`}>
                                         {movimiento.MOVTipo === "GASTO" ? "-" : "+"}Q{formatearMonto(movimiento.MOVMonto)}
                                     </p>
