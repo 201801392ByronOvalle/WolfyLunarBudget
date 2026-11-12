@@ -75,6 +75,7 @@ api/
       env.ts
     lib/
       prisma.ts
+      usuario-actual.ts
     modules/
       usuarios/
         usuarios.controller.ts
@@ -82,6 +83,7 @@ api/
       categorias/
         categorias.controller.ts
         categorias.routes.ts
+        categorias.rules.ts
       cuentas/
         cuentas.controller.ts
         cuentas.routes.ts
@@ -94,7 +96,12 @@ api/
       presupuestos/
         presupuestos.controller.ts
         presupuestos.routes.ts
+    app.ts
     server.ts
+  tests/
+    http/
+    unit/
+    support/
   .env
   package.json
   tsconfig.json
@@ -111,7 +118,31 @@ DATABASE_URL="postgresql://USUARIO:PASSWORD@HOST/wolfy_lunar_budget?sslmode=requ
 
 PORT=4000
 NODE_ENV=development
+CURRENT_USER_ID=
 ```
+
+### `CURRENT_USER_ID`
+
+`CURRENT_USER_ID` es el identificador (entero positivo) de un usuario existente en `WLB_USUARIO`.
+La API lo usa como **usuario actual determinado por el servidor**: Categorías filtra y crea con él, y
+Movimientos valida que el movimiento, la cuenta y la categoría le pertenezcan. El cliente no puede
+escoger otro usuario.
+
+> **No es autenticación.** Solo fija el usuario con el que trabaja esta instalación de un único
+> usuario. No protege la API ni sustituye un inicio de sesión.
+
+Al arrancar, la API verifica la variable y **no arranca** si no es válida:
+
+| Situación al iniciar | Mensaje en consola | Código de salida |
+|---|---|---|
+| Falta o está vacía | `Error de configuración: CURRENT_USER_ID falta` | 78 |
+| No es un entero positivo | `Error de configuración: CURRENT_USER_ID no es un entero positivo` | 78 |
+| No existe ese usuario | `Error de configuración: CURRENT_USER_ID no corresponde a un usuario existente` | 78 |
+| No se puede conectar a la base para verificarlo | `Error de conexión a la base de datos al verificar CURRENT_USER_ID` | 69 |
+| Otro error inesperado | Mensaje genérico de arranque | 1 |
+
+Los mensajes nunca muestran el valor configurado ni la cadena de conexión. No publiques los valores
+de `.env` en issues, PR ni capturas.
 
 ---
 
@@ -167,6 +198,30 @@ npm run prisma:migrate
 npm run prisma:seed
 ```
 
+### Pruebas automatizadas (Vitest)
+
+```bash
+npm test
+```
+
+Ejecuta las pruebas de `api/tests/` con un doble de Prisma en memoria y una `DATABASE_URL` en un
+host `.invalid`: **no se conectan a ninguna base de datos**. Por eso no demuestran el comportamiento
+real de PostgreSQL (aislamiento, `P2034`, `P2028`, tiempos); eso se verifica con los casos manuales
+en una base aislada (`specs/001-gestion-categorias/quickstart.md`).
+
+En `web/`, `npm test` ejecuta las pruebas de funciones puras de `services/`.
+
+### Verificación de tipos
+
+```bash
+npm run typecheck
+```
+
+Comprueba los tipos del código y de las pruebas (`tsconfig.test.json`), sin generar archivos.
+
+> `npm run build` escribe en `api/dist/`, que está versionado: no incluyas esos cambios generados en
+> los commits.
+
 ---
 
 ## Endpoints iniciales
@@ -210,8 +265,16 @@ GET /api/usuarios
 ### Categorías
 
 ```txt
-GET /api/categorias
+GET   /api/categorias
+GET   /api/categorias/duplicados
+POST  /api/categorias
+PATCH /api/categorias/:id/desactivar
+PATCH /api/categorias/:id/activar
+PATCH /api/categorias/:id
 ```
+
+Todas trabajan solo con las categorías del usuario actual (`CURRENT_USER_ID`). El contrato completo
+está en `specs/001-gestion-categorias/contracts/categorias.md`.
 
 ### Cuentas
 
@@ -222,8 +285,14 @@ GET /api/cuentas
 ### Movimientos
 
 ```txt
-GET /api/movimientos
+GET   /api/movimientos
+POST  /api/movimientos
+PATCH /api/movimientos/:id
+PATCH /api/movimientos/:id/desactivar
 ```
+
+Crear, editar y desactivar validan la pertenencia al usuario actual y la correspondencia entre el
+tipo del movimiento y el de su categoría. Ver `specs/001-gestion-categorias/contracts/movimientos.md`.
 
 ### Metas
 

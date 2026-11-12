@@ -59,16 +59,20 @@ web/
 │   └── page.tsx
 │
 ├── components/
+│   ├── categorias/
 │   ├── dashboard/
 │   ├── layout/
 │   └── movimientos/
 │
 ├── services/
 │
+├── tests/          (Vitest: funciones puras de services/)
+│
 ├── types/
 │
 ├── public/
 │
+├── vitest.config.ts
 └── package.json
 ```
 
@@ -268,6 +272,57 @@ La misma organización podrá aplicarse a los demás módulos.
 
 ---
 
+# Módulo de Categorías (feature 001-gestion-categorias)
+
+`app/categorias/page.tsx` (componente cliente) ensambla dos componentes de `components/categorias/`:
+
+- **`CategoryForm.tsx`**: crea y edita categorías.
+  - El tipo se elige con tres opciones de radio (ingreso en verde, gasto en rojo, ahorro en azul
+    cielo); el color con texto `#RRGGBB` más un selector nativo; el nombre con contador n/50.
+  - Errores en línea con `aria-invalid` y `aria-describedby`; el foco va al primer campo con error,
+    también cuando la API rechaza el guardado.
+  - En edición solo valida y envía los campos que cambian (comparando con los valores guardados sin
+    normalizarlos) y muestra "No hay cambios por guardar." si no hay ninguno.
+  - En edición muestra siempre la advertencia general: "Las categorías con movimientos asociados no
+    permiten cambiar su tipo." La API es la que decide (409).
+  - La página lo remonta con `key` al cambiar entre crear y editar, sin efectos que copien props en
+    el estado.
+- **`CategoriesTable.tsx`**: lista activas e inactivas con estados de carga, vacío y error con
+  "Reintentar"; aviso de posibles duplicados (diagnóstico de solo lectura) y marca "Duplicada";
+  acciones Editar, Desactivar (con confirmación) y Activar, con el resultado anunciado en una región
+  `aria-live`. Tras activar, desactivar o un rechazo 409 recarga la lista sin mostrar la carga.
+
+## Funciones de `services/categorias.service.ts`
+
+| Función | Uso |
+|---|---|
+| `getCategorias()` | Todas las categorías del usuario actual (activas e inactivas). |
+| `getDiagnosticoDuplicados()` | Grupos de duplicados históricos; no la usa Movimientos. |
+| `crearCategoria(payload)` | Alta; el usuario lo determina el servidor. |
+| `editarCategoria(id, payload)` | Edición; se envían solo los campos que cambian. |
+| `desactivarCategoria(id)` / `activarCategoria(id)` | Cambio de estado sin borrar. |
+| `filtrarCategoriasParaMovimiento(categorias, tipo, categoriaActualId?, tipoPersistido?)` | Opciones del selector de Movimientos (función pura, con pruebas). |
+
+`getCategoriasActivas()` se eliminó: ya no tenía consumidores.
+
+## Filtro de categorías en Movimientos
+
+`CreateMovementForm` y `MovementsTable` cargan `getCategorias()` y muestran las opciones de
+`filtrarCategoriasParaMovimiento`:
+
+- Movimiento nuevo: solo categorías **activas** cuyo tipo corresponde al tipo elegido, más
+  "Sin categoría".
+- Edición: si el tipo no cambió respecto del guardado, se agrega al final la categoría actual del
+  movimiento aunque esté inactiva o no corresponda, marcada "(inactiva)" o "(no corresponde al
+  tipo)", para poder conservarla.
+- Al cambiar el tipo, si la categoría elegida deja de ofrecerse se quita y se muestra un aviso en una
+  región `aria-live`.
+
+`CreateMovementForm` ya no consulta `getUsuarios()` ni envía `USUId`: el usuario lo determina el
+servidor (`CURRENT_USER_ID`).
+
+---
+
 # Consumo de API
 
 Toda llamada al backend debe realizarse mediante la carpeta `services`.
@@ -303,6 +358,10 @@ La interfaz sigue una estética moderna basada en:
 - Espaciado consistente.
 - Tipografía clara.
 - Colores diferenciados para ingresos, gastos y ahorro.
+
+Dirección vigente ("Swiss Fintech Dark"): fondo zinc oscuro, violeta como color de acción y de foco
+visible, verde para ingresos, rojo para gastos y azul cielo para ahorro; textos secundarios en
+`zinc-400` para mantener el contraste mínimo de 4.5:1, y diseño utilizable desde 360 px de ancho.
 
 El objetivo es ofrecer una experiencia limpia y enfocada en la lectura de la información financiera.
 

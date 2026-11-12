@@ -22,7 +22,7 @@ El proyecto se encuentra en la etapa de construcción de la arquitectura base. A
 | Dashboard | 🚧 |
 | Movimientos | 🚧 |
 | Cuentas | 🚧 |
-| Categorías | 🚧 |
+| Categorías | ✅ Implementada · validación en base aislada pendiente |
 | Metas | 🚧 |
 | Presupuestos | ⏳ |
 | Reportes | ⏳ |
@@ -91,11 +91,26 @@ El proyecto se encuentra en la etapa de construcción de la arquitectura base. A
 - [ ] Ordenar movimientos.
 - [ ] Paginación.
 
+Ajustes de la feature 001-gestion-categorias (implementados; validación en base aislada pendiente):
+
+- [x] Usuario determinado por el servidor (`CURRENT_USER_ID`); `USUId` opcional al crear.
+- [x] Pertenencia del movimiento, la cuenta y la categoría al crear, editar y desactivar.
+- [x] Correspondencia entre el tipo del movimiento y el de la categoría.
+- [x] Conservación de categorías históricas (inactivas o de tipo incompatible) al editar.
+- [x] Escritura solo de los campos que cambian.
+- [x] Selectores de categoría filtrados por tipo, con aviso al limpiar la selección.
+
 ## Categorías
 
-- [ ] CRUD completo.
-- [ ] Activar / Desactivar.
-- [ ] Validaciones.
+Feature `specs/001-gestion-categorias` (rama `feature/aowxkit-adoption`, commits locales sin push).
+
+- [x] Consultar categorías del usuario actual, activas e inactivas.
+- [x] Crear categoría.
+- [x] Editar categoría (sin eliminación física).
+- [x] Activar / Desactivar.
+- [x] Validaciones (nombre, tipo, color, ícono y unicidad por tipo y nombre normalizado).
+- [x] Diagnóstico de solo lectura de duplicados históricos.
+- [ ] Validación de integración en una base PostgreSQL aislada (ver "Pendientes de la feature 001").
 
 ## Cuentas
 
@@ -151,6 +166,44 @@ El proyecto se encuentra en la etapa de construcción de la arquitectura base. A
 
 ---
 
+# Pendientes de la feature 001-gestion-categorias
+
+## Excepción del Principio VII (abierta hasta resolver DA-06)
+
+Las pruebas automatizadas usan un doble de Prisma y no se conectan a ninguna base, por lo que no
+demuestran el comportamiento real de PostgreSQL (aislamiento `Serializable`, `P2034`/`40001`,
+`P2028`, tiempos de Neon). Mientras no exista un entorno de base aislado (DA-06), esa parte se cubre
+con verificaciones manuales que **todavía no se han ejecutado**:
+
+- [ ] Arranque A1–A5 (`quickstart.md` §2): A1 solo lee; A2–A5 con cambios temporales de la
+      configuración local, restaurados al terminar.
+- [ ] Casos M1–M10 y regresión de Movimientos §4, **solo en una base aislada**, nunca en la base Neon
+      actual. En M7 anotar la forma del error de serialización observado.
+- [ ] M11: observación de usabilidad SC-001 en la base aislada.
+- [ ] Revisión de `/movimientos` con la API real, sin guardar datos (T062).
+
+Cuando se resuelva DA-06, estos casos deberían automatizarse como pruebas de integración.
+
+## Riesgos residuales aceptados
+
+| Riesgo | Descripción | Estado |
+|---|---|---|
+| R-4 | Un cambio de tipo de categoría concurrente con el alta de un movimiento con esa categoría podría dejar un movimiento cuyo tipo no corresponde. | Abierto; probabilidad muy baja con un solo usuario. |
+| R-6 | `GET` de movimientos, cuentas, usuarios, metas y presupuestos devuelve datos de todos los usuarios. | Abierto; requiere una spec de aislamiento multiusuario o autenticación. |
+| R-7 | Editar un movimiento cuya cuenta está inactiva sigue respondiendo 409, porque la web reenvía `CUEId`. | Abierto; comportamiento previo, fuera de la spec. |
+| R-8 | El Dashboard muestra como "usuario conectado" al primero de la lista. | Abierto; fuera de alcance. |
+| R-9 | Formas Unicode distintas (NFC/NFD) del mismo nombre no se detectan como duplicado. | Abierto; la spec no define normalización Unicode. |
+| R-10 | Un usuario borrado fuera de la API después del arranque provoca respuestas 500 hasta reiniciar, y entonces la API no arranca. | Abierto; no existe endpoint que borre usuarios. |
+| R-12 | Las operaciones con `$transaction` pueden responder 500 por `P2028` si Neon tarda más de `maxWait` (5 s) en reanudarse o la transacción supera `timeout` (10 s). | Abierto; sin reintento por diseño; verificar con M10. |
+| R-13 | `transactionOptions` en el constructor de `PrismaClient`. | Mitigado: verificado en los tipos de Prisma 6 instalado (T014) y con prueba unitaria. |
+
+Otros riesgos del plan: R-1 (D3 deja sin servicio toda la API si `CURRENT_USER_ID` es inválido) y R-2
+(clientes antiguos que envían otro `USUId` reciben 400) son decisiones aceptadas; R-3 y R-5 dependen
+de la validación en base aislada; R-11 (`npm run build` modifica `api/dist/` versionado) y R-14
+(`.specify/feature.json`) se controlan excluyéndolos de los commits.
+
+---
+
 # Futuras Mejoras
 
 Estas funcionalidades no forman parte del MVP, pero se consideran posibles evoluciones del proyecto.
@@ -175,3 +228,4 @@ Estas funcionalidades no forman parte del MVP, pero se consideran posibles evolu
 | Fecha | Descripción |
 |--------|-------------|
 | 29/07/2026 | Se completó la arquitectura base del backend y frontend. Se documentó la visión y el roadmap inicial del proyecto. |
+| 12/11/2026 | Se implementó la gestión de categorías (feature 001) y sus ajustes en Movimientos, con pruebas automatizadas sobre un doble de Prisma. Queda pendiente la validación en una base PostgreSQL aislada. |
