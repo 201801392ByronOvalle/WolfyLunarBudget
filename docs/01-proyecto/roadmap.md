@@ -182,7 +182,7 @@ con verificaciones manuales que **todavía no se han ejecutado**:
 - [ ] M11: observación de usabilidad SC-001 en la base aislada.
 - [x] Revisión de `/movimientos` con la API real, sin guardar datos (T062), el 2026-11-12 en una base
       PostgreSQL local aislada. Detectó la incidencia I-1 (desbordamiento a 360 px con montos
-      largos), pendiente de corrección
+      largos), corregida en `1e7969d`
       (`specs/001-gestion-categorias/verificacion-manual.md`).
 
 Cuando se resuelva DA-06, estos casos deberían automatizarse como pruebas de integración.

@@ -44,7 +44,7 @@ hizo con ese estado.
 | 10 | En la edición de «Cuota gimnasio», cambiar a Ingreso | Se limpia la categoría con el aviso «Se quitó la categoría “Gimnasio” porque no puede usarse con ingreso…»; al volver a Gasto, «Gimnasio (inactiva)» vuelve a ofrecerse. ✅ |
 | 11 | Cancelar cada edición | El editor se cierra y no se envía ninguna petición de escritura. ✅ |
 | 12 | Escritorio (1009 px) | Sin desplazamiento horizontal. ✅ |
-| 13 | 360 px | **Desplazamiento horizontal de 8 px** (contenido de 368 px). ❌ Incidencia I-1 |
+| 13 | 360 px | **Desplazamiento horizontal de 8 px** (contenido de 368 px). ❌ Incidencia I-1 (corregida después en `1e7969d`; ver abajo) |
 
 **Evidencia de la API real y de ausencia de escrituras**
 
@@ -55,13 +55,20 @@ hizo con ese estado.
 
 ### Incidencias y observaciones
 
-- **I-1 (defecto abierto, afecta a FR-017 / SC-007, M8)**: a 360 px, en la lista de movimientos, el
+- **I-1 (defecto corregido; afectaba a FR-017 / SC-007, M8)**: a 360 px, en la lista de movimientos, el
   bloque derecho de cada fila (monto, «Editar» y «Desactivar») no se ajusta. Con un monto como
   «+Q3000.00» su ancho mínimo (≈244 px) supera el disponible (≈240 px) y la página se desborda 8 px.
   Comprobado en la pestaña: con `flex-wrap` en ese bloque el ancho queda en 360 px. Corrección
   propuesta (pendiente de aprobación, fuera del alcance de T062): `flex flex-wrap items-center
   gap-x-4 gap-y-2` en ese contenedor de `web/components/movimientos/MovementsTable.tsx`. La revisión
   de US5 con datos simulados (montos cortos, 375 px) no lo detectó.
+  - **Corregida el 2026-11-12** (commit `1e7969d`): se aplicó esa clase al contenedor. Verificado
+    con la API real y la base local: a 360 px y 375 px el ancho del documento es igual al del
+    viewport (sin desplazamiento); con «+Q3000.00» los botones bajan a la línea siguiente y siguen
+    visibles; en escritorio (1009 px) las seis filas mantienen monto y botones en una sola línea.
+    Editar y Cancelar siguen funcionando sin desbordamiento y los botones conservan su foco
+    visible. Solo hubo peticiones `GET` y la huella de los datos no cambió. `npm test` (7/7),
+    `tsc`, `lint` y el detector de impeccable sin hallazgos.
 - **O-1 (observación)**: cuando la categoría histórica está inactiva **y** no corresponde al tipo,
   solo se muestra «(inactiva)» (`filtrarCategoriasParaMovimiento` da prioridad al estado inactivo).
   La marca «(no corresponde al tipo)» no se pudo ver con datos reales porque, con el estado actual,

@@ -394,7 +394,7 @@ antes de integrar.
 - **Actualización 2026-11-12**: ya existe una base aislada local (`lunarbudget_test`, PostgreSQL
   18.7 en `localhost`). **T062 verificada** con la API real y sin escrituras
   ([verificacion-manual.md](./verificacion-manual.md)); detectó la incidencia **I-1** (desbordamiento
-  de 8 px a 360 px en la lista de movimientos con montos largos), abierta y relacionada con FR-017 /
+  de 8 px a 360 px en la lista de movimientos con montos largos), corregida en `1e7969d`, relacionada con FR-017 /
   SC-007 (M8). T071–T073 siguen pendientes.
 
 ---
