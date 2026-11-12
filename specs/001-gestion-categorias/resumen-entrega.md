@@ -2,8 +2,10 @@
 
 **Fecha**: 2026-11-12 · **Rama**: `feature/aowxkit-adoption` · **Constitución**: v1.3.0
 **Estado**: implementada y verificada con pruebas automatizadas sobre un doble de Prisma.
-**No validada contra PostgreSQL real**: faltan los casos manuales en una base aislada (sección 6).
-Commits locales, sin push.
+**Actualización 2026-11-12**: verificada también contra **PostgreSQL 18.7 local** (`lunarbudget_test`)
+con T062, T071, T072 y T073 (detalle en `verificacion-manual.md`); 75/75 tareas. Queda verificado
+solo en parte M10 (suspensión del compute y `maxWait`, no reproducibles en local) y no se ha
+validado contra Neon. Commits locales, sin push; no está declarada lista para producción.
 
 ## 1. Funcionalidad entregada
 
@@ -114,9 +116,9 @@ T072 ejecutada el 2026-11-12 en PostgreSQL local (detalle en `verificacion-manua
 - [ ] **M10**: verificado el `timeout` (500 genérico + `P2028`, sin cambios); **pendientes** la
       suspensión del compute y `maxWait`, no reproducibles en PostgreSQL local.
 - [x] **§4 regresión de Movimientos** (SC-006): registrar, editar y desactivar con y sin categoría.
-- [ ] **M11** (T073): cronometrar la creación de una categoría desde `/categorias`. Verificación
-      técnica hecha el 2026-11-12 con un recorrido automatizado (envío → confirmación en 32 ms;
-      28,5 s en total por la latencia del agente). **Pendiente la observación con una persona.**
+- [x] **M11** (T073): cronometrar la creación de una categoría desde `/categorias`. Verificación
+      técnica automatizada (envío → confirmación en 32 ms) y **medición con una persona** (Andrés):
+      2,30 s, sin dificultades → SC-001 cumple.
 
 Registrar la evidencia en el PR, sin valores de configuración.
 

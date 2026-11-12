@@ -22,7 +22,7 @@ El proyecto se encuentra en la etapa de construcción de la arquitectura base. A
 | Dashboard | 🚧 |
 | Movimientos | 🚧 |
 | Cuentas | 🚧 |
-| Categorías | ✅ Implementada · validación en base aislada pendiente |
+| Categorías | ✅ Implementada · verificada en PostgreSQL local (M10 parcial; sin publicar) |
 | Metas | 🚧 |
 | Presupuestos | ⏳ |
 | Reportes | ⏳ |
@@ -110,7 +110,8 @@ Feature `specs/001-gestion-categorias` (rama `feature/aowxkit-adoption`, commits
 - [x] Activar / Desactivar.
 - [x] Validaciones (nombre, tipo, color, ícono y unicidad por tipo y nombre normalizado).
 - [x] Diagnóstico de solo lectura de duplicados históricos.
-- [ ] Validación de integración en una base PostgreSQL aislada (ver "Pendientes de la feature 001").
+- [x] Validación de integración en una base PostgreSQL local aislada (2026-11-12; M10 parcial; ver
+      "Pendientes de la feature 001").
 
 ## Cuentas
 
@@ -173,7 +174,8 @@ Feature `specs/001-gestion-categorias` (rama `feature/aowxkit-adoption`, commits
 Las pruebas automatizadas usan un doble de Prisma y no se conectan a ninguna base, por lo que no
 demuestran el comportamiento real de PostgreSQL (aislamiento `Serializable`, `P2034`/`40001`,
 `P2028`, tiempos de Neon). Mientras no exista un entorno de base aislado (DA-06), esa parte se cubre
-con verificaciones manuales que **todavía no se han ejecutado**:
+con verificaciones manuales. El 2026-11-12 se ejecutaron en una base PostgreSQL local aislada
+(`lunarbudget_test`); la excepción sigue abierta por M10 (parcial) y hasta automatizar estas pruebas:
 
 - [x] Arranque A1–A5 (`quickstart.md` §2), verificado el 2026-11-12 en PostgreSQL local (T071):
       A1 arranca; A2–A4 terminan con 78 y A5 con 69, sin valores sensibles en consola.
@@ -181,9 +183,9 @@ con verificaciones manuales que **todavía no se han ejecutado**:
       local. M7 observó `P2034`. El defecto D-1 (reenviar un nombre histórico con espacios respondía
       409) se corrigió en `483b3be`. Pendiente: la parte de M10 sobre suspensión del compute y
       `maxWait`. Ver `specs/001-gestion-categorias/verificacion-manual.md`.
-- [ ] M11: observación de usabilidad SC-001 en la base aislada. Verificación técnica automatizada
-      hecha el 2026-11-12 (sin problemas de la app; observaciones O-4 y O-5); falta cronometrar con
-      una persona (T073).
+- [x] M11: observación de usabilidad SC-001 en la base aislada (T073). Medición con una persona
+      (Andrés, 2026-11-12): 2,30 s, sin dificultades; cumple el límite de 30 s. Mejoras sugeridas
+      por la revisión técnica: O-4 (foco tras crear) y O-5 (enlace para saltar al contenido).
 - [x] Revisión de `/movimientos` con la API real, sin guardar datos (T062), el 2026-11-12 en una base
       PostgreSQL local aislada. Detectó la incidencia I-1 (desbordamiento a 360 px con montos
       largos), corregida en `1e7969d`

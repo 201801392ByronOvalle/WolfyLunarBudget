@@ -213,7 +213,9 @@ descripciones de los movimientos 2 y 3, colores de «Varios» y «comida ».
 
 ## T073 — M11, usabilidad SC-001 (2026-11-12)
 
-**Resultado: verificación técnica completada; observación con una persona pendiente.**
+**Resultado: verificada.** SC-001 se cumple con la medición hecha por una persona (Andrés), que se
+detalla al final de esta sección. A continuación, la verificación técnica automatizada previa, que
+se conserva como complemento.
 
 **Criterio** (`spec.md`, SC-001): «El usuario puede crear una categoría válida en menos de
 30 segundos desde que abre la pantalla Categorías». T073 y M11 lo definen como una **observación de
@@ -280,6 +282,34 @@ terminó por debajo de 30 s. **No mide** lo que tarda una persona en leer, decid
 - **O-5**: no hay enlace para saltar al contenido; las 6 entradas de la barra lateral preceden al
   formulario. Corresponde al layout compartido (`AppShell`), fuera del alcance de esta feature.
 
-**Pendiente**: que **Andrés** cronometre el flujo (abrir `/categorias` → confirmación de una
-categoría válida, con un nombre nuevo, en `lunarbudget_test`) y anote las dificultades. Con eso se
-marca T073. La medición técnica no sustituye esa observación.
+**Pendiente en ese momento**: que Andrés cronometrara el flujo. La medición técnica no sustituye esa
+observación.
+
+### Medición con una persona (2026-11-12)
+
+Hecha **personalmente por Andrés** en `/categorias` contra PostgreSQL local (`lunarbudget_test`).
+Resultados tal como él los informó; el agente no presenció ni cronometró la prueba:
+
+| Dato | Resultado informado |
+|---|---|
+| Tiempo desde abrir `/categorias` hasta ver la confirmación | **2,30 s** |
+| Resultado funcional | Todo funcionó correctamente |
+| Dificultades | Ninguna |
+| SC-001 (menos de 30 s) | **Cumple** (2,30 s < 30 s) |
+
+**Comprobación en la base (solo lectura).** Conexión `lunarbudget_test` en `::1:5432`. Después de la
+verificación técnica (`CATId=17`) existen dos categorías nuevas, ambas del usuario 1 y activas:
+
+| CATId | Nombre | Tipo | Color | Ícono | Creada (hora del servidor) |
+|---|---|---|---|---|---|
+| 18 | Videojuegos | `gasto` | `#80FF80` | `videogames` | 2026-11-12 23:43:32 |
+| 19 | Prueba | `ingreso` | `#0000FF` | `wallet` | 2026-11-12 23:45:24 |
+
+No se puede determinar con certeza cuál corresponde a la prueba cronometrada; se registran ambas sin
+atribuirle la medición a ninguna. Totales tras la prueba: 1 usuario, 2 cuentas, 16 categorías y
+8 movimientos. Cuentas y movimientos sin cambios respecto de T072.
+
+Diferencia con la medición automatizada: la del agente (28,5 s de punta a punta) mide un recorrido
+con la sobrecarga de sus herramientas y solo aporta los tiempos de la aplicación (menos de 0,4 s); la
+de Andrés mide la experiencia de una persona y es la que se usa para SC-001. Las observaciones O-4 y
+O-5 de la revisión técnica se mantienen como mejoras sugeridas.

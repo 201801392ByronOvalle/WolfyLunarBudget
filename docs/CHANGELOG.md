@@ -8,9 +8,10 @@ El formato está basado en **Keep a Changelog** y el proyecto utiliza Versionado
 
 ## [Sin publicar] - Feature 001-gestion-categorias
 
-Rama `feature/aowxkit-adoption`. Verificada con pruebas automatizadas que usan un doble de Prisma;
-**pendiente de validar contra PostgreSQL** en una base aislada (casos A1–A5 y M1–M11 de
-`specs/001-gestion-categorias/quickstart.md`). Contratos completos en
+Rama `feature/aowxkit-adoption`. Verificada con pruebas automatizadas que usan un doble de Prisma y,
+el 2026-11-12, contra PostgreSQL 18.7 local aislado (casos A1–A5 y M1–M11 de
+`specs/001-gestion-categorias/quickstart.md`; evidencia en `verificacion-manual.md`). M10 queda
+verificado solo en parte y no se ha validado contra Neon. Contratos completos en
 `specs/001-gestion-categorias/contracts/`.
 
 ### Agregado
