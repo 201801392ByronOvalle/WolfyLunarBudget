@@ -244,7 +244,7 @@ crear, editar y desactivar, y `USUId` según D2 (FR-021 a FR-024, FR-026, amplia
 - [X] T068 [P] Actualizar docs/CHANGELOG.md con los cambios de contrato de contracts/categorias.md y contracts/movimientos.md (incluidos arranque, desactivar movimiento y respuesta 500 ante `P2028`)
 - [X] T069 [P] Actualizar docs/01-proyecto/roadmap.md: Categorías completada, ajustes de Movimientos; pendientes: excepción del Principio VII hasta resolver DA-06, casos manuales en base aislada si siguen sin ejecutarse y riesgos residuales aceptados R-4, R-6, R-7, R-8, R-9, R-10, R-12 y R-13 de plan.md
 - [X] T070 [AUTO] Revisiones estáticas del diff, **después** de T065–T069: ningún `fetch(` fuera de `web/services/`; `apiGet` en web/services/api.ts conserva `cache: "no-store"` (FR-019); ninguna respuesta con `error` crudo en api/src/modules/categorias/ ni movimientos/; sin `$queryRaw`/`$executeRaw`; `git diff --stat api/prisma` vacío; sin patrones de credenciales (`postgresql://`, `password=`, tokens) ni valores de `CURRENT_USER_ID`; `.specify/feature.json` y `api/dist/` fuera de lo preparado para commit
-- [ ] T071 [MANUAL-LECTURA] Arranque A1–A5 de quickstart.md §2, ejecutado por Andrés (A1 solo lee de Neon; A2–A5 con cambios temporales en la configuración local, restaurados al terminar); evidencia sin valores de configuración. Cubre el cableado de salida de `server.ts` (excepción VII)
+- [X] T071 [MANUAL-LECTURA] Arranque A1–A5 de quickstart.md §2, ejecutado por Andrés (A1 solo lee de Neon; A2–A5 con cambios temporales en la configuración local, restaurados al terminar); evidencia sin valores de configuración. Cubre el cableado de salida de `server.ts` (excepción VII) — **Verificada el 2026-11-12** con autorización de Andrés, contra PostgreSQL local (`lunarbudget_test`) en lugar de Neon, con procesos auxiliares de entorno explícito y sin modificar ningún `.env`: A1 arranca y `/health` OK; A2–A4 → 78; A5 → 69; sin valores sensibles en consola. Evidencia en [verificacion-manual.md](./verificacion-manual.md)
 - [ ] T072 [MANUAL-AISLADA] Casos M1–M10 de quickstart.md §3 y regresión §4 (SC-006) **exclusivamente en una base aislada** preparada por Andrés (incluidos los duplicados históricos de M9); **nunca** sobre la base Neon actual. Registrar evidencia en el PR. En M7 anotar la forma del error observado (`P2034`, `40001` u otro) y, si no coincide con `esErrorDeSerializacion`, abrir una corrección; un `P2028` se registra aparte como tiempo agotado. Si no hay base aislada, la tarea queda **pendiente** y la excepción VII sigue abierta en el roadmap
 - [ ] T073 [MANUAL-AISLADA] Validación de usabilidad SC-001 (caso M11 de quickstart.md) en la base aislada: cronometrar desde abrir `/categorias` hasta ver la confirmación de una categoría válida creada y anotar dificultades; es una observación de usabilidad, no una garantía de rendimiento
 - [X] T074 Revisar la matriz de trazabilidad de este archivo: cada criterio tiene una prueba en verde o evidencia manual (o figura como pendiente con motivo); marcar las tareas completadas
@@ -395,7 +395,8 @@ antes de integrar.
   18.7 en `localhost`). **T062 verificada** con la API real y sin escrituras
   ([verificacion-manual.md](./verificacion-manual.md)); detectó la incidencia **I-1** (desbordamiento
   de 8 px a 360 px en la lista de movimientos con montos largos), corregida en `1e7969d`, relacionada con FR-017 /
-  SC-007 (M8). T071–T073 siguen pendientes.
+  SC-007 (M8). **T071 verificada** (A1–A5 cumplen el contrato de arranque, 78/69, sin valores
+  sensibles en consola). T072 y T073 siguen pendientes.
 
 ---
 

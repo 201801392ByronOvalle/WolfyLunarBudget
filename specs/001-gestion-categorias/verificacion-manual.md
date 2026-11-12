@@ -75,6 +75,52 @@ hizo con ese estado.
   ningún movimiento usa una categoría **activa** de tipo incompatible; está cubierta por las pruebas
   automatizadas (T052) y se revisará en M4/M5 (T072).
 
-## T071–T073
+## T071 — Arranque de la API, casos A1–A5 (2026-11-12)
+
+**Resultado: verificada; los cinco casos cumplen el contrato** (`contracts/movimientos.md`,
+"Arranque de la API"; `quickstart.md` §2).
+
+**Ejecución.** El agente la ejecutó con la autorización de Andrés, contra la base **local**
+`lunarbudget_test` en lugar de Neon (desviación del texto de T071, que preveía A1 sobre Neon; este
+equipo no tiene acceso a Neon). Se ejecutó el `src/server.ts` real con `ts-node`, en procesos
+auxiliares independientes:
+
+- Cada proceso recibió de forma explícita `DATABASE_URL`, `CURRENT_USER_ID`, `PORT` y `NODE_ENV`.
+  Prisma Client carga `api/.env` sin sobrescribir las variables ya definidas, y `api/.env` contiene
+  `DATABASE_URL` (Neon) y `CURRENT_USER_ID`; definirlas todas evita que se cuele alguno de esos
+  valores.
+- `cwd` en una carpeta vacía, para que `dotenv` (en `src/config/env.ts`) no encontrara ningún `.env`.
+- Puertos alternativos 4101–4105. La API principal del puerto 4000 no se detuvo ni se modificó, y
+  siguió respondiendo `/health` = `OK`.
+- No se modificó ningún `.env` persistente. Solo hubo lecturas (`findUnique` del usuario y, en A1,
+  `GET /api/categorias`): la huella de los datos (conteo y `md5` por tabla) fue idéntica antes y
+  después.
+
+| Caso | Configuración | Salida en consola | Código de salida | Resultado |
+|---|---|---|---|---|
+| A1 | `CURRENT_USER_ID` válido (usuario de prueba) | `API running on http://localhost:4101`; `GET /health` → 200 `{"success":true,"status":"OK"}`; `GET /api/categorias` → 200 con 7 filas | — (arrancó; el proceso auxiliar se detuvo al terminar) | ✅ |
+| A2 | `CURRENT_USER_ID` vacío | `Error de configuración: CURRENT_USER_ID falta` | 78 | ✅ |
+| A3 | `CURRENT_USER_ID=abc` | `Error de configuración: CURRENT_USER_ID no es un entero positivo` | 78 | ✅ |
+| A4 | Id inexistente | `Error de configuración: CURRENT_USER_ID no corresponde a un usuario existente` | 78 | ✅ |
+| A5 | `DATABASE_URL` a un puerto local cerrado (`127.0.0.1`, credenciales ficticias) | `Error de conexión a la base de datos al verificar CURRENT_USER_ID` | 69 | ✅ |
+
+En ningún caso la consola mostró la cadena de conexión, la contraseña ni el valor de
+`CURRENT_USER_ID`; se comprobó automáticamente en la salida de cada proceso. Al terminar no quedó
+ningún puerto auxiliar en uso. Esto cubre el cableado de salida de `server.ts` (78/69) que no se
+automatiza (excepción del Principio VII). El código 1 ("otro error inesperado") no tiene un caso
+manual en `quickstart.md`; lo cubren las pruebas unitarias de `describirErrorArranque`.
+
+**Notas**
+
+- **A2 con la variable vacía.** Se probó con `CURRENT_USER_ID` definido pero vacío, que el contrato
+  trata igual que ausente (`parsearUsuarioActualId` convierte `undefined` en `""`). Con la variable
+  realmente ausente, Prisma Client la completaría desde `api/.env`, que sí la define, y el caso no
+  sería representativo.
+- **Observación O-2.** Por esa misma carga automática, al iniciar la API desde `api/` cualquier
+  variable que no se defina explícitamente se toma de `api/.env`, que apunta a Neon. Por eso las
+  instrucciones de la base local cargan siempre `api/.env.test.local` completo antes de arrancar.
+  Comportamiento previo, sin cambios de código.
+
+## T072–T073
 
 Pendientes.

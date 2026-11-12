@@ -92,7 +92,8 @@ Preparación (la hace Andrés):
 
 Lista de comprobación:
 
-- [ ] **A1–A5** (`quickstart.md` §2, T071): arranque válido, falta, formato, usuario inexistente y host
+- [x] **A1–A5** (verificados el 2026-11-12 en PostgreSQL local, ver `verificacion-manual.md`)
+      (`quickstart.md` §2, T071): arranque válido, falta, formato, usuario inexistente y host
       inalcanzable (códigos 78/69); la consola nunca muestra valores.
 - [x] **T062** (verificada el 2026-11-12 en PostgreSQL local; incidencia I-1 corregida en `1e7969d`, ver
       `verificacion-manual.md`): `/movimientos` con la API real, sin guardar: filtro por tipo, aviso al cambiar el

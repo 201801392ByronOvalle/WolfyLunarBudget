@@ -175,8 +175,8 @@ demuestran el comportamiento real de PostgreSQL (aislamiento `Serializable`, `P2
 `P2028`, tiempos de Neon). Mientras no exista un entorno de base aislado (DA-06), esa parte se cubre
 con verificaciones manuales que **todavía no se han ejecutado**:
 
-- [ ] Arranque A1–A5 (`quickstart.md` §2): A1 solo lee; A2–A5 con cambios temporales de la
-      configuración local, restaurados al terminar.
+- [x] Arranque A1–A5 (`quickstart.md` §2), verificado el 2026-11-12 en PostgreSQL local (T071):
+      A1 arranca; A2–A4 terminan con 78 y A5 con 69, sin valores sensibles en consola.
 - [ ] Casos M1–M10 y regresión de Movimientos §4, **solo en una base aislada**, nunca en la base Neon
       actual. En M7 anotar la forma del error de serialización observado.
 - [ ] M11: observación de usabilidad SC-001 en la base aislada.
