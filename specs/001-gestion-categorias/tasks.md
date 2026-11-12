@@ -188,15 +188,15 @@ doble, incluida la idempotencia (409).
 
 ### Tests for User Story 4
 
-- [ ] T045 [P] [US4] Escribir api/tests/http/categorias.estado.test.ts (debe fallar): desactivar → 200 `CATActiva: false` (US4-2); activar → 200 `CATActiva: true` (US4-6); repetir → 409 "La categoría ya se encuentra inactiva/activa" sin escrituras (US4-7); 404 por otro usuario o inexistente; desactivar con movimientos asociados → 200 y 0 escrituras sobre movimientos (US4-5, FR-010, SC-002); uso de `$transaction`; `P2028` simulado → 500; orden de rutas: `PATCH /api/categorias/5/desactivar` y `/5/activar` no llegan a `updateCategoria`
+- [X] T045 [P] [US4] Escribir api/tests/http/categorias.estado.test.ts (debe fallar): desactivar → 200 `CATActiva: false` (US4-2); activar → 200 `CATActiva: true` (US4-6); repetir → 409 "La categoría ya se encuentra inactiva/activa" sin escrituras (US4-7); 404 por otro usuario o inexistente; desactivar con movimientos asociados → 200 y 0 escrituras sobre movimientos (US4-5, FR-010, SC-002); uso de `$transaction`; `P2028` simulado → 500; orden de rutas: `PATCH /api/categorias/5/desactivar` y `/5/activar` no llegan a `updateCategoria`
 
 ### Implementation for User Story 4
 
-- [ ] T046 [US4] Implementar `desactivarCategoria` y `activarCategoria` en api/src/modules/categorias/categorias.controller.ts con lectura + actualización de `CATActiva` dentro de `prisma.$transaction` (aislamiento por omisión); sin tocar movimientos ni presupuestos; `P2028` → 500
-- [ ] T047 [US4] Registrar `PATCH "/:id/desactivar"` y `PATCH "/:id/activar"` en api/src/modules/categorias/categorias.routes.ts **antes** de `PATCH "/:id"` (hace pasar T045)
-- [ ] T048 [P] [US4] Agregar `desactivarCategoria(id)` y `activarCategoria(id)` (vía `apiPatch`) en web/services/categorias.service.ts
-- [ ] T049 [US4] Agregar en web/components/categorias/CategoriesTable.tsx (depende de T048) las acciones "Desactivar" (con `window.confirm`, como `MovementsTable`; cancelar no cambia nada, US4-1/US4-3) y "Activar", con mensajes de confirmación y acciones deshabilitadas durante la operación
-- [ ] T050 [US4] [AUTO] Verificar: `npm test` en `api/` (T045 en verde); `npx tsc --noEmit` y `npm run lint` en `web/`
+- [X] T046 [US4] Implementar `desactivarCategoria` y `activarCategoria` en api/src/modules/categorias/categorias.controller.ts con lectura + actualización de `CATActiva` dentro de `prisma.$transaction` (aislamiento por omisión); sin tocar movimientos ni presupuestos; `P2028` → 500
+- [X] T047 [US4] Registrar `PATCH "/:id/desactivar"` y `PATCH "/:id/activar"` en api/src/modules/categorias/categorias.routes.ts **antes** de `PATCH "/:id"` (hace pasar T045)
+- [X] T048 [P] [US4] Agregar `desactivarCategoria(id)` y `activarCategoria(id)` (vía `apiPatch`) en web/services/categorias.service.ts
+- [X] T049 [US4] Agregar en web/components/categorias/CategoriesTable.tsx (depende de T048) las acciones "Desactivar" (con `window.confirm`, como `MovementsTable`; cancelar no cambia nada, US4-1/US4-3) y "Activar", con mensajes de confirmación y acciones deshabilitadas durante la operación
+- [X] T050 [US4] [AUTO] Verificar: `npm test` en `api/` (T045 en verde); `npx tsc --noEmit` y `npm run lint` en `web/`
 
 **Checkpoint**: ciclo de vida completo de la categoría.
 
