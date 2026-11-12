@@ -122,6 +122,11 @@ Al finalizar entrega:
 - Validaciones ejecutadas.
 - Problemas pendientes.
 
-No hagas commits ni push.
+Commits: puedes crear commits locales de incrementos terminados y verificados, en la rama de
+trabajo actual, siguiendo la política del Principio X de la Constitución
+(`.specify/memory/constitution.md`): Conventional Commits en español, staging selectivo, sin
+`.env`, secretos, `.specify/feature.json` ni `api/dist/`, e informando los hashes cortos al
+terminar. No hagas push, force push, reset destructivo, rebase ni cambies de rama sin una
+petición explícita.
 
 No actualices la documentación salvo que la tarea lo solicite explícitamente.
