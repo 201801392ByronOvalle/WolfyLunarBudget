@@ -34,3 +34,14 @@ export function crearCategoria(payload: CrearCategoriaPayload) {
 export function editarCategoria(id: number, payload: EditarCategoriaPayload) {
     return apiPatch<CategoriaResponse>(`/api/categorias/${id}`, payload);
 }
+
+// Desactiva una categoría propia sin borrarla; sus movimientos se conservan (FR-008, FR-010).
+// Si ya estaba inactiva, la API responde 409 y se lanza un Error con su mensaje.
+export function desactivarCategoria(id: number) {
+    return apiPatch<CategoriaResponse>(`/api/categorias/${id}/desactivar`);
+}
+
+// Reactiva una categoría propia. Si ya estaba activa, la API responde 409.
+export function activarCategoria(id: number) {
+    return apiPatch<CategoriaResponse>(`/api/categorias/${id}/activar`);
+}

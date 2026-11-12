@@ -2,7 +2,12 @@
 
 // components/categorias/CategoriesTable.tsx
 import { useCallback, useEffect, useState } from "react";
-import { getCategorias, getDiagnosticoDuplicados } from "@/services/categorias.service";
+import {
+    activarCategoria,
+    desactivarCategoria,
+    getCategorias,
+    getDiagnosticoDuplicados,
+} from "@/services/categorias.service";
 import { Categoria, GrupoDuplicadoCategoria } from "@/types/categoria";
 
 interface CategoriesTableProps {
@@ -45,8 +50,13 @@ export default function CategoriesTable({
     const [duplicados, setDuplicados] = useState<GrupoDuplicadoCategoria[]>([]);
     const [errorDiagnostico, setErrorDiagnostico] = useState(false);
 
-    const cargarDatos = useCallback(async () => {
-        setCargando(true);
+    // Activar / desactivar (US4): una operación a la vez y su resultado anunciado en la región viva.
+    const [procesandoId, setProcesandoId] = useState<number | null>(null);
+    const [aviso, setAviso] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
+
+    // `silencioso` recarga sin mostrar el estado de carga (tras activar o desactivar).
+    const cargarDatos = useCallback(async (silencioso = false) => {
+        if (!silencioso) setCargando(true);
         setError(null);
         setErrorDiagnostico(false);
 
@@ -82,6 +92,52 @@ export default function CategoriesTable({
         cargarInicial();
     }, [cargarDatos, refreshSignal]);
 
+    async function cambiarEstado(categoria: Categoria) {
+        if (procesandoId !== null) return;
+        const nombre = categoria.CATNombre.trim();
+        const desactivar = categoria.CATActiva;
+
+        // Desactivar pide confirmación; cancelar no envía ninguna petición (US4-1, US4-3).
+        if (
+            desactivar &&
+            !window.confirm(
+                `¿Desactivar la categoría “${nombre}”? Seguirá visible en tu historial, pero no podrás usarla en movimientos nuevos.`,
+            )
+        ) {
+            return;
+        }
+
+        setAviso(null);
+        setProcesandoId(categoria.CATId);
+        try {
+            if (desactivar) {
+                await desactivarCategoria(categoria.CATId);
+            } else {
+                await activarCategoria(categoria.CATId);
+            }
+            setAviso({
+                tipo: "exito",
+                texto: desactivar
+                    ? `Categoría “${nombre}” desactivada. Sus movimientos se conservan.`
+                    : `Categoría “${nombre}” activada. Ya puedes usarla en movimientos nuevos.`,
+            });
+            await cargarDatos(true);
+        } catch (excepcion) {
+            const esRechazoApi = excepcion instanceof Error && excepcion.name === "Error";
+            setAviso({
+                tipo: "error",
+                texto: esRechazoApi
+                    ? excepcion.message
+                    : "No se pudo conectar con el servidor. La categoría no cambió; inténtalo de nuevo.",
+            });
+            // Un rechazo de la API (por ejemplo, 409 porque ya tenía ese estado) indica que la lista
+            // está desactualizada: se recarga para mostrar el estado real.
+            if (esRechazoApi) await cargarDatos(true);
+        } finally {
+            setProcesandoId(null);
+        }
+    }
+
     const idsDuplicados = new Set(duplicados.flatMap((grupo) => grupo.categorias.map((c) => c.CATId)));
 
     return (
@@ -89,6 +145,21 @@ export default function CategoriesTable({
             <div className="mb-4">
                 <h2 className="text-lg font-semibold">Mis categorías</h2>
                 <p className="text-sm text-zinc-400">Categorías activas e inactivas, ordenadas por nombre.</p>
+            </div>
+
+            <div aria-live="polite">
+                {aviso ? (
+                    <p
+                        role={aviso.tipo === "error" ? "alert" : undefined}
+                        className={`mb-4 rounded-xl border p-3 text-sm ${
+                            aviso.tipo === "error"
+                                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                        }`}
+                    >
+                        {aviso.texto}
+                    </p>
+                ) : null}
             </div>
 
             {cargando && (
@@ -108,7 +179,7 @@ export default function CategoriesTable({
                     <p>{error}</p>
                     <button
                         type="button"
-                        className="self-start rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-200 transition hover:bg-red-500/10 sm:self-auto"
+                        className="self-start rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 sm:self-auto"
                         onClick={() => void cargarDatos()}
                     >
                         Reintentar
@@ -207,6 +278,26 @@ export default function CategoriesTable({
                                             {categoriaEnEdicionId === categoria.CATId ? "Editando" : "Editar"}
                                         </button>
                                     ) : null}
+                                    <button
+                                        type="button"
+                                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                            categoria.CATActiva
+                                                ? "border-red-500/40 text-red-300 hover:bg-red-500/10"
+                                                : "border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+                                        }`}
+                                        onClick={() => void cambiarEstado(categoria)}
+                                        disabled={procesandoId !== null}
+                                        aria-busy={procesandoId === categoria.CATId}
+                                        aria-label={`${categoria.CATActiva ? "Desactivar" : "Activar"} la categoría ${categoria.CATNombre.trim()}`}
+                                    >
+                                        {procesandoId === categoria.CATId
+                                            ? categoria.CATActiva
+                                                ? "Desactivando…"
+                                                : "Activando…"
+                                            : categoria.CATActiva
+                                              ? "Desactivar"
+                                              : "Activar"}
+                                    </button>
                                 </div>
                             </li>
                         ))}
