@@ -114,7 +114,9 @@ T072 ejecutada el 2026-11-12 en PostgreSQL local (detalle en `verificacion-manua
 - [ ] **M10**: verificado el `timeout` (500 genérico + `P2028`, sin cambios); **pendientes** la
       suspensión del compute y `maxWait`, no reproducibles en PostgreSQL local.
 - [x] **§4 regresión de Movimientos** (SC-006): registrar, editar y desactivar con y sin categoría.
-- [ ] **M11** (T073): cronometrar la creación de una categoría desde `/categorias`.
+- [ ] **M11** (T073): cronometrar la creación de una categoría desde `/categorias`. Verificación
+      técnica hecha el 2026-11-12 con un recorrido automatizado (envío → confirmación en 32 ms;
+      28,5 s en total por la latencia del agente). **Pendiente la observación con una persona.**
 
 Registrar la evidencia en el PR, sin valores de configuración.
 

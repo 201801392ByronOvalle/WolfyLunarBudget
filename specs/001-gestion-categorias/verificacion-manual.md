@@ -211,6 +211,75 @@ la secuencia se deben a las inserciones fallidas de M7), 8 movimientos (6 activo
 (inactiva), cinco categorías `[M7]` y los movimientos 7 y 8 (inactivos). Cambios en datos previos:
 descripciones de los movimientos 2 y 3, colores de «Varios» y «comida ».
 
-## T073
+## T073 — M11, usabilidad SC-001 (2026-11-12)
 
-Pendiente.
+**Resultado: verificación técnica completada; observación con una persona pendiente.**
+
+**Criterio** (`spec.md`, SC-001): «El usuario puede crear una categoría válida en menos de
+30 segundos desde que abre la pantalla Categorías». T073 y M11 lo definen como una **observación de
+usabilidad, no una garantía de rendimiento**: cronometrar desde abrir `/categorias` hasta ver la
+confirmación y anotar las dificultades. No fijan otros umbrales.
+
+**Qué se hizo.** Un recorrido **automatizado por el agente**, no una prueba con personas usuarias.
+Usó el formulario real de `/categorias`, la API real (`fetch` nativo, sin simulación) y
+`lunarbudget_test`, verificada antes de escribir. Con la pestaña visible:
+
+1. Navegar a `/categorias`.
+2. Hacer clic en «Nombre» y escribir «[M11] Suscripciones».
+3. Pulsar `Tab` hasta el tipo y elegir «Gasto» con la flecha.
+4. Pulsar `Tab` hasta el color y escribir `#0ea5e9`.
+5. Pulsar `Tab` dos veces hasta el ícono y escribir `repeat`.
+6. Enviar con `Enter`.
+
+Los tiempos salen de la API de rendimiento del navegador, de los tiempos de recursos y de un
+observador pasivo del DOM.
+
+| Medición (ms desde el inicio de la navegación) | Valor |
+|---|---|
+| Página interactiva (`domInteractive`) | 70 ms |
+| Carga inicial de la lista (`GET /api/categorias`) | inicio 231 ms, duración 45 ms (lista lista ≈ 0,28 s) |
+| `POST /api/categorias` | 18 ms |
+| Envío (`Enter`) → confirmación visible | **32 ms** |
+| Primer clic → confirmación visible | 11,8 s |
+| Navegación → confirmación visible | **28,5 s** |
+
+El tiempo total está dominado por la latencia de las herramientas del agente (unos 10 pasos
+automatizados entre la carga y el envío), no por la aplicación. La parte atribuible a la app (carga
+de la lista, `POST` y confirmación) suma menos de 0,4 s. Aun con esa sobrecarga, el recorrido
+terminó por debajo de 30 s. **No mide** lo que tarda una persona en leer, decidir y escribir.
+
+**Evidencia de la creación real**
+
+- Confirmación visible: «Categoría “[M11] Suscripciones” creada.». La lista pasó de 13 a 14 y la fila
+  nueva muestra «Gasto · Activa».
+- El formulario se reinició (nombre, tipo y color vacíos; botón «Crear categoría»).
+- En la base: una sola fila nueva, `CATId=17`, «[M11] Suscripciones» (19 caracteres), `gasto`,
+  `#0ea5e9`, `repeat`, activa, `USUId=1`, igual a lo enviado. Las 13 categorías previas conservan
+  la misma huella (`md5`) que al empezar; cuentas y movimientos sin cambios. Totales: 1 usuario,
+  2 cuentas, 14 categorías y 8 movimientos.
+- Un segundo envío con el mismo nombre, para revisar los errores, respondió **409** sin escribir.
+
+**Revisión de usabilidad y accesibilidad (técnica)**
+
+| Aspecto | Observado | Evaluación |
+|---|---|---|
+| Etiquetas | Todos los campos tienen `<label>` asociada; el tipo, opciones de radio con descripción («Sueldo, ventas»…); contador 19/50 | ✅ |
+| Teclado | Recorrido completo sin ratón tras llegar al nombre; las flechas eligen el tipo; `Enter` envía. El nombre es la parada 7 de `Tab` (tras 6 enlaces de la barra lateral) | ✅ (ver O-5) |
+| Errores (envío vacío) | «Escribe un nombre de 1 a 50 caracteres.» y «Elige si la categoría es de ingreso, gasto o ahorro.», en línea con `aria-invalid`; foco en el nombre; ninguna petición | ✅ |
+| Errores (duplicado) | 409 «Ya existe la categoría "[M11] Suscripciones" de tipo gasto» junto al nombre; foco en el nombre; valor conservado | ✅ |
+| Confirmación | Texto visible en región `aria-live` | ✅ |
+| 360 px | Formulario y errores sin desplazamiento horizontal (ancho del documento = 360 px) | ✅ |
+| Escritorio | Flujo completo sin problemas | ✅ |
+
+**Observaciones (no son defectos de contrato)**
+
+- **O-4**: tras crear con éxito, el foco queda en `BODY`, porque los campos se deshabilitan durante el
+  envío y el formulario se reinicia. Una persona que usa teclado tiene que volver a tabular hasta el
+  nombre (7 paradas) para crear otra. Mejora sugerida: devolver el foco al nombre después de la
+  confirmación.
+- **O-5**: no hay enlace para saltar al contenido; las 6 entradas de la barra lateral preceden al
+  formulario. Corresponde al layout compartido (`AppShell`), fuera del alcance de esta feature.
+
+**Pendiente**: que **Andrés** cronometre el flujo (abrir `/categorias` → confirmación de una
+categoría válida, con un nombre nuevo, en `lunarbudget_test`) y anote las dificultades. Con eso se
+marca T073. La medición técnica no sustituye esa observación.

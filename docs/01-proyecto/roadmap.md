@@ -181,7 +181,9 @@ con verificaciones manuales que **todavía no se han ejecutado**:
       local. M7 observó `P2034`. El defecto D-1 (reenviar un nombre histórico con espacios respondía
       409) se corrigió en `483b3be`. Pendiente: la parte de M10 sobre suspensión del compute y
       `maxWait`. Ver `specs/001-gestion-categorias/verificacion-manual.md`.
-- [ ] M11: observación de usabilidad SC-001 en la base aislada.
+- [ ] M11: observación de usabilidad SC-001 en la base aislada. Verificación técnica automatizada
+      hecha el 2026-11-12 (sin problemas de la app; observaciones O-4 y O-5); falta cronometrar con
+      una persona (T073).
 - [x] Revisión de `/movimientos` con la API real, sin guardar datos (T062), el 2026-11-12 en una base
       PostgreSQL local aislada. Detectó la incidencia I-1 (desbordamiento a 360 px con montos
       largos), corregida en `1e7969d`
