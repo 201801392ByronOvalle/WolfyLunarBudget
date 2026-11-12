@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { obtenerUsuarioActualId } from "../../lib/usuario-actual";
 import {
+    cambiosCategoria,
     detectarDuplicados,
     normalizarNombre,
     normalizarOpcional,
@@ -163,5 +164,111 @@ export const createCategoria = async (req: Request, res: Response) => {
         });
     } catch (error) {
         responderErrorInesperado(res, error, "Error al crear la categoría");
+    }
+};
+
+function parseIdCategoria(valor: string): number | null {
+    if (!/^\d+$/.test(valor)) return null;
+    const id = Number(valor);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+type ResultadoEdicion =
+    | { estado: "no-encontrada" }
+    | { estado: "invalida"; mensaje: string }
+    | { estado: "con-movimientos" }
+    | { estado: "duplicada"; categoria: { CATNombre: string; CATTipo: string; CATActiva: boolean } }
+    | { estado: "actualizada"; categoria: unknown };
+
+// Edita nombre, color, ícono y tipo (FR-005 a FR-007, FR-026). Solo se validan y se escriben los
+// campos que cambian respecto de lo persistido; los valores históricos que no cambian se conservan.
+export const updateCategoria = async (req: Request, res: Response) => {
+    try {
+        const id = parseIdCategoria(req.params.id);
+        if (!id) {
+            res.status(400).json({ success: false, message: "El id de la categoría es inválido", data: null });
+            return;
+        }
+
+        const body = (req.body ?? {}) as Record<string, unknown>;
+        const USUId = obtenerUsuarioActualId();
+
+        // Lectura previa para responder 404 y decidir el aislamiento: Serializable solo si cambian
+        // el nombre o el tipo (los campos que participan de la unicidad).
+        const previa = await prisma.categoria.findUnique({ where: { CATId: id } });
+        if (!previa || previa.USUId !== USUId) {
+            res.status(404).json({ success: false, message: "La categoría indicada no existe", data: null });
+            return;
+        }
+        const cambiosPrevios = cambiosCategoria(previa, body);
+
+        const editar = async (tx: Prisma.TransactionClient): Promise<ResultadoEdicion> => {
+            // Se vuelve a leer dentro de la transacción para validar contra el estado vigente.
+            const actual = await tx.categoria.findUnique({ where: { CATId: id } });
+            if (!actual || actual.USUId !== USUId) return { estado: "no-encontrada" };
+
+            const cambios = cambiosCategoria(actual, body);
+            const mensaje =
+                (cambios.nombre ? validarNombre(body.CATNombre) : null) ??
+                (cambios.tipo ? validarTipo(body.CATTipo) : null) ??
+                (cambios.color ? validarColor(body.CATColor) : null) ??
+                (cambios.icono ? validarIcono(body.CATIcono) : null);
+            if (mensaje) return { estado: "invalida", mensaje };
+
+            const data: Prisma.CategoriaUpdateInput = {};
+            if (cambios.nombre) data.CATNombre = (body.CATNombre as string).trim();
+            if (cambios.tipo) data.CATTipo = body.CATTipo as string;
+            if (cambios.color) data.CATColor = normalizarOpcional(body.CATColor as string | null);
+            if (cambios.icono) data.CATIcono = normalizarOpcional(body.CATIcono as string | null);
+
+            if (cambios.tipo) {
+                // Cualquier movimiento asociado, activo o desactivado, fija el tipo (FR-007).
+                const movimientos = await tx.movimiento.count({ where: { CATId: id } });
+                if (movimientos > 0) return { estado: "con-movimientos" };
+            }
+
+            if (cambios.nombre || cambios.tipo) {
+                const nombreResultante = normalizarNombre((data.CATNombre as string | undefined) ?? actual.CATNombre);
+                const tipoResultante = (data.CATTipo as string | undefined) ?? actual.CATTipo;
+                const mismasDelTipo = await tx.categoria.findMany({ where: { USUId, CATTipo: tipoResultante } });
+                const duplicada = mismasDelTipo.find(
+                    (otra) => otra.CATId !== id && normalizarNombre(otra.CATNombre) === nombreResultante,
+                );
+                if (duplicada) return { estado: "duplicada", categoria: duplicada };
+            }
+
+            if (Object.keys(data).length === 0) return { estado: "actualizada", categoria: actual };
+            const categoria = await tx.categoria.update({ where: { CATId: id }, data });
+            return { estado: "actualizada", categoria };
+        };
+
+        const resultado =
+            cambiosPrevios.nombre || cambiosPrevios.tipo
+                ? await ejecutarSerializableConReintentos(editar)
+                : await prisma.$transaction(editar);
+
+        switch (resultado.estado) {
+            case "no-encontrada":
+                res.status(404).json({ success: false, message: "La categoría indicada no existe", data: null });
+                return;
+            case "invalida":
+                res.status(400).json({ success: false, message: resultado.mensaje, data: null });
+                return;
+            case "con-movimientos":
+                res.status(409).json({
+                    success: false,
+                    message: "No se puede cambiar el tipo: la categoría tiene movimientos asociados",
+                    data: null,
+                });
+                return;
+            case "duplicada":
+                res.status(409).json({ success: false, message: mensajeDuplicado(resultado.categoria), data: null });
+                return;
+            case "actualizada":
+                res.json({ success: true, message: "Categoría actualizada correctamente", data: resultado.categoria });
+                return;
+        }
+    } catch (error) {
+        responderErrorInesperado(res, error, "Error al actualizar la categoría");
     }
 };
