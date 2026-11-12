@@ -115,7 +115,7 @@ export interface CambiosCategoria {
 
 // Un valor no textual se considera un cambio para que la validación lo rechace.
 function cambiaTextoOpcional(recibido: unknown, persistido: string | null): boolean {
-    if (recibido === undefined) return false;
+    if (recibido === undefined || recibido === persistido) return false;
     if (recibido === null) return persistido !== null;
     if (typeof recibido !== "string") return true;
     return normalizarOpcional(recibido) !== persistido;
@@ -123,13 +123,16 @@ function cambiaTextoOpcional(recibido: unknown, persistido: string | null): bool
 
 /**
  * Qué campos cambian realmente respecto de lo persistido (FR-026). Una propiedad ausente nunca es
- * un cambio; el valor recibido se normaliza como se guardaría antes de compararlo.
+ * un cambio; un valor reenviado exactamente igual al guardado tampoco, aunque sea un dato histórico
+ * que no cumple las reglas actuales (D-1). En otro caso, el valor recibido se normaliza como se
+ * guardaría antes de compararlo.
  */
 export function cambiosCategoria(existente: CategoriaPersistida, body: Record<string, unknown>): CambiosCategoria {
     const { CATNombre, CATTipo, CATColor, CATIcono } = body;
     return {
         nombre:
             CATNombre !== undefined &&
+            CATNombre !== existente.CATNombre &&
             (typeof CATNombre !== "string" || CATNombre.trim() !== existente.CATNombre),
         tipo: CATTipo !== undefined && CATTipo !== existente.CATTipo,
         color: cambiaTextoOpcional(CATColor, existente.CATColor),

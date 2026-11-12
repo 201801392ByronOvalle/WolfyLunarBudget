@@ -298,6 +298,51 @@ describe("PATCH /api/categorias/:id — datos históricos (FR-026)", () => {
         expect(prismaFake.control.transacciones).toEqual([undefined]);
     });
 
+    // D-1 (T072): reenviar EXACTAMENTE el nombre guardado, aunque tenga espacios históricos, no es
+    // un cambio: no se valida, no se consulta la unicidad y no se escribe CATNombre.
+    it("D-1: reenviar el nombre histórico con espacio final idéntico y cambiar el color → 200 sin escribir CATNombre", async () => {
+        prismaFake.control.datos.categorias.push(categoria(2, "Comida", "gasto"), categoria(3, "comida ", "gasto"));
+
+        const { status, cuerpo } = await editar(3, { CATNombre: "comida ", CATTipo: "gasto", CATColor: "#16a34a" });
+
+        expect(status).toBe(200);
+        expect(cuerpo.data).toMatchObject({ CATId: 3, CATNombre: "comida ", CATColor: "#16a34a" });
+        expect(prismaFake.control.escrituras).toEqual([
+            { modelo: "categoria", metodo: "update", data: { CATColor: "#16a34a" } },
+        ]);
+        expect(guardada(3)?.CATNombre).toBe("comida ");
+        expect(guardada(2)).toMatchObject({ CATNombre: "Comida", CATColor: null });
+        expect(prismaFake.control.llamadas.some((l) => l.metodo === "findMany")).toBe(false);
+        expect(prismaFake.control.transacciones).toEqual([undefined]);
+    });
+
+    it("D-1: un cambio real del nombre histórico sigue aplicando unicidad y validación", async () => {
+        prismaFake.control.datos.categorias.push(categoria(2, "Comida", "gasto"), categoria(3, "comida ", "gasto"));
+
+        const recortado = await editar(3, { CATNombre: "comida", CATColor: "#16a34a" });
+        expect(recortado.status).toBe(409);
+        expect(recortado.cuerpo.message).toBe('Ya existe la categoría "Comida" de tipo gasto');
+
+        const vacio = await editar(3, { CATNombre: "   " });
+        expect(vacio.status).toBe(400);
+        expect(vacio.cuerpo.message).toBe("CATNombre es requerido y debe tener como máximo 50 caracteres");
+
+        expect(prismaFake.control.escrituras).toEqual([]);
+        expect(guardada(3)).toMatchObject({ CATNombre: "comida ", CATColor: null });
+    });
+
+    it("D-1: un color histórico reenviado idéntico no se revalida ni se reescribe", async () => {
+        prismaFake.control.datos.categorias.push(categoria(4, "Ocio", "gasto", { CATColor: " #ABC" }));
+
+        const { status } = await editar(4, { CATNombre: "Ocio", CATColor: " #ABC", CATIcono: "gamepad" });
+
+        expect(status).toBe(200);
+        expect(prismaFake.control.escrituras).toEqual([
+            { modelo: "categoria", metodo: "update", data: { CATIcono: "gamepad" } },
+        ]);
+        expect(guardada(4)?.CATColor).toBe(" #ABC");
+    });
+
     it("un nombre histórico de más de 50 caracteres que no cambia no se revalida", async () => {
         const largo = "Nombre histórico ".repeat(4).trim();
         prismaFake.control.datos.categorias.push(categoria(3, largo, "gasto"));

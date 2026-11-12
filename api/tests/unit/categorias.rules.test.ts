@@ -176,6 +176,17 @@ describe("cambiosCategoria", () => {
         expect(cambiosCategoria(historico, { CATNombre: " Comida " }).nombre).toBe(true);
     });
 
+    it("D-1: un valor histórico reenviado exactamente igual no es un cambio", () => {
+        const historico = { CATNombre: "comida ", CATTipo: " Gasto", CATColor: " #ABC", CATIcono: " tag " };
+        expect(
+            cambiosCategoria(historico, { CATNombre: "comida ", CATTipo: " Gasto", CATColor: " #ABC", CATIcono: " tag " }),
+        ).toEqual({ nombre: false, tipo: false, color: false, icono: false });
+    });
+
+    it("D-1: el nombre histórico recortado sí es un cambio (se valida y se aplica la unicidad)", () => {
+        expect(cambiosCategoria({ ...existente, CATNombre: "comida " }, { CATNombre: "comida" }).nombre).toBe(true);
+    });
+
     it("detecta cambios de tipo, color e ícono", () => {
         expect(cambiosCategoria(existente, { CATTipo: "ahorro", CATColor: "", CATIcono: "wallet" })).toEqual({
             nombre: false,
