@@ -1,0 +1,8 @@
+# Configuración local de Claude Code (por máquina; no se comparte).
+# Las Skills compartidas de Spec Kit en skills/ sí se versionan.
+
+# Permisos y preferencias locales de Claude Code.
+settings.local.json
+
+# Configuración local de la vista previa (servidores y puertos de cada máquina).
+launch.json
